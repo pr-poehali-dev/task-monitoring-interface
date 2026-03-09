@@ -29,10 +29,9 @@ interface Task {
 interface Employee {
   id: number;
   name: string;
+  shortName: string;
   position: string;
   department: string;
-  tasks: number;
-  completed: number;
   email: string;
 }
 
@@ -112,44 +111,31 @@ const INITIAL_TASKS: Task[] = [
 ];
 
 const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 1, name: "Иванова Анна Сергеевна", position: "Главный бухгалтер", department: "Финансовый отдел", tasks: 4, completed: 2, email: "ivanova@corp.ru" },
-  { id: 2, name: "Сидоров Михаил Дмитриевич", position: "Специалист по охране труда", department: "HR отдел", tasks: 3, completed: 1, email: "sidorov@corp.ru" },
-  { id: 3, name: "Козлова Екатерина Викторовна", position: "HR-менеджер", department: "HR отдел", tasks: 5, completed: 3, email: "kozlova@corp.ru" },
-  { id: 4, name: "Морозов Кирилл Павлович", position: "Руководитель отдела продаж", department: "Отдел продаж", tasks: 6, completed: 5, email: "morozov@corp.ru" },
-  { id: 5, name: "Новикова Татьяна Александровна", position: "Операционный менеджер", department: "Административный отдел", tasks: 2, completed: 2, email: "novikova@corp.ru" },
+  { id: 1, name: "Иванова Анна Сергеевна", shortName: "Иванова А.С.", position: "Главный бухгалтер", department: "Финансовый отдел", email: "ivanova@corp.ru" },
+  { id: 2, name: "Сидоров Михаил Дмитриевич", shortName: "Сидоров М.Д.", position: "Специалист по охране труда", department: "HR отдел", email: "sidorov@corp.ru" },
+  { id: 3, name: "Козлова Екатерина Викторовна", shortName: "Козлова Е.В.", position: "HR-менеджер", department: "HR отдел", email: "kozlova@corp.ru" },
+  { id: 4, name: "Морозов Кирилл Павлович", shortName: "Морозов К.П.", position: "Руководитель отдела продаж", department: "Отдел продаж", email: "morozov@corp.ru" },
+  { id: 5, name: "Новикова Татьяна Александровна", shortName: "Новикова Т.А.", position: "Операционный менеджер", department: "Административный отдел", email: "novikova@corp.ru" },
 ];
 
-const statusLabel: Record<Status, string> = {
-  new: "Новое",
-  progress: "В работе",
-  done: "Выполнено",
-  overdue: "Просрочено",
-};
+const statusLabel: Record<Status, string> = { new: "Новое", progress: "В работе", done: "Выполнено", overdue: "Просрочено" };
+const priorityLabel: Record<Priority, string> = { high: "Высокий", medium: "Средний", low: "Низкий" };
+const statusClass: Record<Status, string> = { new: "status-new", progress: "status-progress", done: "status-done", overdue: "status-overdue" };
+const priorityClass: Record<Priority, string> = { high: "priority-high", medium: "priority-medium", low: "priority-low" };
+const priorityIcon: Record<Priority, string> = { high: "AlertTriangle", medium: "Minus", low: "ChevronDown" };
 
-const priorityLabel: Record<Priority, string> = {
-  high: "Высокий",
-  medium: "Средний",
-  low: "Низкий",
-};
+type ModalMode = "create" | "edit";
 
-const statusClass: Record<Status, string> = {
-  new: "status-new",
-  progress: "status-progress",
-  done: "status-done",
-  overdue: "status-overdue",
-};
+interface TaskFormState {
+  title: string;
+  description: string;
+  responsible: string;
+  deadline: string;
+  priority: Priority;
+  assignedBy: string;
+}
 
-const priorityClass: Record<Priority, string> = {
-  high: "priority-high",
-  medium: "priority-medium",
-  low: "priority-low",
-};
-
-const priorityIcon: Record<Priority, string> = {
-  high: "AlertTriangle",
-  medium: "Minus",
-  low: "ChevronDown",
-};
+const emptyForm: TaskFormState = { title: "", description: "", responsible: "", deadline: "", priority: "medium", assignedBy: "Директор Петров В.И." };
 
 export default function Index() {
   const [section, setSection] = useState<Section>("orders");
@@ -157,19 +143,19 @@ export default function Index() {
   const [employees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newComment, setNewComment] = useState("");
-  const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [filterStatus, setFilterStatus] = useState<Status | "all">("all");
-  const [newTask, setNewTask] = useState({
-    title: "",
-    description: "",
-    responsible: "",
-    deadline: "",
-    priority: "medium" as Priority,
-  });
+
+  // Task modal
+  const [taskModal, setTaskModal] = useState<{ open: boolean; mode: ModalMode; editId?: number }>({ open: false, mode: "create" });
+  const [taskForm, setTaskForm] = useState<TaskFormState>(emptyForm);
+
+  // Employee panel
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [reassignModal, setReassignModal] = useState<{ open: boolean; taskId?: number }>({ open: false });
+  const [reassignTo, setReassignTo] = useState("");
 
   const orderTasks = tasks.filter((t) => t.section === "order");
   const reportTasks = tasks.filter((t) => t.section === "report");
-
   const filteredOrders = filterStatus === "all" ? orderTasks : orderTasks.filter((t) => t.status === filterStatus);
   const filteredReports = filterStatus === "all" ? reportTasks : reportTasks.filter((t) => t.status === filterStatus);
 
@@ -181,17 +167,66 @@ export default function Index() {
     overdue: tasks.filter((t) => t.status === "overdue").length,
   };
 
+  const employeeTasks = (emp: Employee) => tasks.filter((t) => t.responsible === emp.shortName);
+
+  const openCreate = () => {
+    setTaskForm({ ...emptyForm });
+    setTaskModal({ open: true, mode: "create" });
+  };
+
+  const openEdit = (task: Task) => {
+    setTaskForm({
+      title: task.title,
+      description: task.description,
+      responsible: task.responsible,
+      deadline: task.deadline,
+      priority: task.priority,
+      assignedBy: task.assignedBy,
+    });
+    setTaskModal({ open: true, mode: "edit", editId: task.id });
+  };
+
+  const saveTask = () => {
+    if (!taskForm.title || !taskForm.responsible || !taskForm.deadline) return;
+
+    if (taskModal.mode === "edit" && taskModal.editId !== undefined) {
+      const updated = tasks.map((t) =>
+        t.id === taskModal.editId
+          ? { ...t, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy }
+          : t
+      );
+      setTasks(updated);
+      if (selectedTask?.id === taskModal.editId) {
+        setSelectedTask({ ...selectedTask, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy });
+      }
+    } else {
+      const task: Task = {
+        id: Date.now(),
+        number: `УК-2026-${String(tasks.length + 1).padStart(3, "0")}`,
+        title: taskForm.title,
+        description: taskForm.description,
+        responsible: taskForm.responsible,
+        assignedBy: taskForm.assignedBy,
+        deadline: taskForm.deadline,
+        status: "new",
+        priority: taskForm.priority,
+        comments: [],
+        section: section === "reports" ? "report" : "order",
+      };
+      setTasks((prev) => [...prev, task]);
+    }
+    setTaskModal({ open: false, mode: "create" });
+  };
+
+  const deleteTask = (taskId: number) => {
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+    if (selectedTask?.id === taskId) setSelectedTask(null);
+  };
+
   const addComment = () => {
     if (!newComment.trim() || !selectedTask) return;
-    const comment: Comment = {
-      id: Date.now(),
-      author: "Вы",
-      text: newComment.trim(),
-      date: new Date().toLocaleDateString("ru-RU"),
-    };
-    const updated = tasks.map((t) =>
-      t.id === selectedTask.id ? { ...t, comments: [...t.comments, comment] } : t
-    );
+    const comment: Comment = { id: Date.now(), author: "Вы", text: newComment.trim(), date: new Date().toLocaleDateString("ru-RU") };
+    const updated = tasks.map((t) => t.id === selectedTask.id ? { ...t, comments: [...t.comments, comment] } : t);
     setTasks(updated);
     setSelectedTask({ ...selectedTask, comments: [...selectedTask.comments, comment] });
     setNewComment("");
@@ -203,24 +238,16 @@ export default function Index() {
     if (selectedTask?.id === taskId) setSelectedTask({ ...selectedTask, status });
   };
 
-  const createTask = () => {
-    if (!newTask.title || !newTask.responsible || !newTask.deadline) return;
-    const task: Task = {
-      id: Date.now(),
-      number: `УК-2024-${String(tasks.length + 1).padStart(3, "0")}`,
-      title: newTask.title,
-      description: newTask.description,
-      responsible: newTask.responsible,
-      assignedBy: "Вы",
-      deadline: newTask.deadline,
-      status: "new",
-      priority: newTask.priority,
-      comments: [],
-      section: section === "reports" ? "report" : "order",
-    };
-    setTasks([...tasks, task]);
-    setNewTask({ title: "", description: "", responsible: "", deadline: "", priority: "medium" });
-    setShowNewTaskModal(false);
+  const openReassign = (taskId: number) => {
+    setReassignTo("");
+    setReassignModal({ open: true, taskId });
+  };
+
+  const confirmReassign = () => {
+    if (!reassignTo || !reassignModal.taskId) return;
+    const updated = tasks.map((t) => t.id === reassignModal.taskId ? { ...t, responsible: reassignTo } : t);
+    setTasks(updated);
+    setReassignModal({ open: false });
   };
 
   const isOverdue = (deadline: string) => new Date(deadline) < new Date();
@@ -240,23 +267,15 @@ export default function Index() {
             </div>
           </div>
         </div>
-
         <nav className="flex-1 px-3 py-4 space-y-1">
           <div className="text-[hsl(210,30%,50%)] text-xs font-medium uppercase tracking-wider px-4 pb-2">Разделы</div>
-          <button onClick={() => setSection("orders")} className={`nav-item w-full text-left ${section === "orders" ? "nav-item-active" : "nav-item-inactive"}`}>
-            <Icon name="FileText" size={16} />
-            Указания и приказы
-          </button>
-          <button onClick={() => setSection("employees")} className={`nav-item w-full text-left ${section === "employees" ? "nav-item-active" : "nav-item-inactive"}`}>
-            <Icon name="Users" size={16} />
-            Сотрудники
-          </button>
-          <button onClick={() => setSection("reports")} className={`nav-item w-full text-left ${section === "reports" ? "nav-item-active" : "nav-item-inactive"}`}>
-            <Icon name="BarChart3" size={16} />
-            Отчётный материал
-          </button>
+          {([["orders", "FileText", "Указания и приказы"], ["employees", "Users", "Сотрудники"], ["reports", "BarChart3", "Отчётный материал"]] as const).map(([key, icon, label]) => (
+            <button key={key} onClick={() => { setSection(key); setSelectedTask(null); setSelectedEmployee(null); }} className={`nav-item w-full text-left ${section === key ? "nav-item-active" : "nav-item-inactive"}`}>
+              <Icon name={icon} size={16} />
+              {label}
+            </button>
+          ))}
         </nav>
-
         <div className="px-3 py-4 border-t border-[hsl(221,40%,22%)]">
           <div className="nav-item nav-item-inactive">
             <Icon name="Settings" size={16} />
@@ -288,18 +307,14 @@ export default function Index() {
           <div className="flex items-center gap-3">
             {(section === "orders" || section === "reports") && (
               <>
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value as Status | "all")}
-                  className="text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white text-[hsl(220,30%,12%)] focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]"
-                >
+                <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as Status | "all")} className="text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white text-[hsl(220,30%,12%)] focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]">
                   <option value="all">Все статусы</option>
                   <option value="new">Новые</option>
                   <option value="progress">В работе</option>
                   <option value="done">Выполненные</option>
                   <option value="overdue">Просроченные</option>
                 </select>
-                <button onClick={() => setShowNewTaskModal(true)} className="btn-gold flex items-center gap-2">
+                <button onClick={openCreate} className="btn-gold flex items-center gap-2">
                   <Icon name="Plus" size={15} />
                   Создать
                 </button>
@@ -328,73 +343,70 @@ export default function Index() {
 
         {/* Content */}
         <div className="flex-1 overflow-hidden flex">
-          {/* Task list */}
-          <div className={`${selectedTask ? "w-2/5" : "w-full"} overflow-y-auto transition-all duration-300`}>
+          {/* Left panel */}
+          <div className={`${(selectedTask || selectedEmployee) ? "w-2/5" : "w-full"} overflow-y-auto transition-all duration-300`}>
+
+            {/* ORDERS */}
             {section === "orders" && (
               <div className="p-6 space-y-3 animate-fade-in">
-                {filteredOrders.length === 0 && (
-                  <div className="text-center py-16 text-[hsl(220,15%,50%)]">
-                    <Icon name="Inbox" size={40} className="mx-auto mb-3 opacity-30" />
-                    <p>Нет документов по выбранному фильтру</p>
-                  </div>
-                )}
+                {filteredOrders.length === 0 && <EmptyState />}
                 {filteredOrders.map((task) => (
-                  <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} isSelected={selectedTask?.id === task.id} />
+                  <TaskCard key={task.id} task={task} onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }} isSelected={selectedTask?.id === task.id} onEdit={() => openEdit(task)} onDelete={() => deleteTask(task.id)} />
                 ))}
               </div>
             )}
+
+            {/* REPORTS */}
             {section === "reports" && (
               <div className="p-6 space-y-3 animate-fade-in">
-                {filteredReports.length === 0 && (
-                  <div className="text-center py-16 text-[hsl(220,15%,50%)]">
-                    <Icon name="Inbox" size={40} className="mx-auto mb-3 opacity-30" />
-                    <p>Нет отчётов по выбранному фильтру</p>
-                  </div>
-                )}
+                {filteredReports.length === 0 && <EmptyState />}
                 {filteredReports.map((task) => (
-                  <TaskCard key={task.id} task={task} onClick={() => setSelectedTask(task)} isSelected={selectedTask?.id === task.id} />
+                  <TaskCard key={task.id} task={task} onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }} isSelected={selectedTask?.id === task.id} onEdit={() => openEdit(task)} onDelete={() => deleteTask(task.id)} />
                 ))}
               </div>
             )}
+
+            {/* EMPLOYEES */}
             {section === "employees" && (
               <div className="p-6 space-y-3 animate-fade-in">
-                {employees.map((emp) => (
-                  <div key={emp.id} className="card-corp p-5 cursor-pointer hover:border-[hsl(221,45%,30%)] transition-all">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
-                          {emp.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                {employees.map((emp) => {
+                  const empTasks = employeeTasks(emp);
+                  const done = empTasks.filter((t) => t.status === "done").length;
+                  const overdue = empTasks.filter((t) => t.status === "overdue").length;
+                  return (
+                    <div key={emp.id} onClick={() => { setSelectedEmployee(emp); setSelectedTask(null); }} className={`card-corp p-5 cursor-pointer transition-all duration-150 ${selectedEmployee?.id === emp.id ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
+                            {emp.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-[hsl(220,30%,12%)] text-sm">{emp.name}</div>
+                            <div className="text-[hsl(220,15%,50%)] text-xs mt-0.5">{emp.position}</div>
+                            <div className="text-[hsl(220,15%,60%)] text-xs">{emp.department}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="font-semibold text-[hsl(220,30%,12%)] text-sm">{emp.name}</div>
-                          <div className="text-[hsl(220,15%,50%)] text-xs mt-0.5">{emp.position}</div>
-                          <div className="text-[hsl(220,15%,60%)] text-xs">{emp.department}</div>
+                        <div className="text-right">
+                          <div className="text-xs text-[hsl(220,15%,50%)] mb-1">Задачи</div>
+                          <div className="text-sm font-semibold text-[hsl(220,30%,12%)]">{done} / {empTasks.length}</div>
+                          <div className="w-20 h-1.5 bg-[hsl(220,15%,93%)] rounded-full mt-1.5 overflow-hidden">
+                            <div className="h-full bg-[hsl(42,80%,50%)] rounded-full transition-all" style={{ width: empTasks.length ? `${(done / empTasks.length) * 100}%` : "0%" }} />
+                          </div>
+                          {overdue > 0 && <div className="text-xs text-red-500 mt-1">{overdue} просрочено</div>}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs text-[hsl(220,15%,50%)] mb-1">Задачи</div>
-                        <div className="text-sm font-semibold text-[hsl(220,30%,12%)]">
-                          {emp.completed} / {emp.tasks}
-                        </div>
-                        <div className="w-20 h-1.5 bg-[hsl(220,15%,93%)] rounded-full mt-1.5 overflow-hidden">
-                          <div
-                            className="h-full bg-[hsl(42,80%,50%)] rounded-full"
-                            style={{ width: `${(emp.completed / emp.tasks) * 100}%` }}
-                          />
-                        </div>
+                      <div className="mt-3 pt-3 border-t border-[hsl(220,20%,93%)] flex items-center gap-1.5 text-xs text-[hsl(220,15%,55%)]">
+                        <Icon name="Mail" size={12} />
+                        {emp.email}
                       </div>
                     </div>
-                    <div className="mt-3 pt-3 border-t border-[hsl(220,20%,93%)] flex items-center gap-1.5 text-xs text-[hsl(220,15%,55%)]">
-                      <Icon name="Mail" size={12} />
-                      {emp.email}
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
 
-          {/* Task Detail Panel */}
+          {/* TASK DETAIL PANEL */}
           {selectedTask && (
             <div className="flex-1 border-l border-[hsl(220,20%,87%)] bg-white overflow-y-auto animate-slide-in">
               <div className="sticky top-0 bg-white border-b border-[hsl(220,20%,87%)] px-6 py-4 flex items-center justify-between z-10">
@@ -402,17 +414,22 @@ export default function Index() {
                   <div className="text-xs text-[hsl(220,15%,50%)] font-mono-ibm">{selectedTask.number}</div>
                   <div className="font-semibold text-[hsl(220,30%,12%)] mt-0.5 text-sm leading-snug max-w-xs">{selectedTask.title}</div>
                 </div>
-                <button onClick={() => setSelectedTask(null)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)] transition-colors">
-                  <Icon name="X" size={16} />
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button onClick={() => openEdit(selectedTask)} title="Редактировать" className="p-1.5 rounded-sm hover:bg-[hsl(42,80%,93%)] text-[hsl(42,70%,40%)] transition-colors">
+                    <Icon name="Pencil" size={15} />
+                  </button>
+                  <button onClick={() => deleteTask(selectedTask.id)} title="Удалить" className="p-1.5 rounded-sm hover:bg-red-50 text-red-400 transition-colors">
+                    <Icon name="Trash2" size={15} />
+                  </button>
+                  <button onClick={() => setSelectedTask(null)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)] transition-colors ml-1">
+                    <Icon name="X" size={16} />
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 space-y-5">
-                {/* Status control */}
                 <div className="flex items-center gap-3 flex-wrap">
-                  <span className={`status-badge ${statusClass[selectedTask.status]}`}>
-                    {statusLabel[selectedTask.status]}
-                  </span>
+                  <span className={`status-badge ${statusClass[selectedTask.status]}`}>{statusLabel[selectedTask.status]}</span>
                   <span className={`text-xs font-medium flex items-center gap-1 ${priorityClass[selectedTask.priority]}`}>
                     <Icon name={priorityIcon[selectedTask.priority]} size={12} fallback="Minus" />
                     {priorityLabel[selectedTask.priority]} приоритет
@@ -421,41 +438,23 @@ export default function Index() {
 
                 <div className="flex gap-2 flex-wrap">
                   {(["new", "progress", "done"] as Status[]).map((s) => (
-                    <button
-                      key={s}
-                      onClick={() => changeStatus(selectedTask.id, s)}
-                      className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${
-                        selectedTask.status === s
-                          ? "bg-[hsl(221,45%,18%)] text-white border-[hsl(221,45%,18%)]"
-                          : "border-[hsl(220,20%,87%)] text-[hsl(220,15%,50%)] hover:border-[hsl(221,45%,30%)]"
-                      }`}
-                    >
+                    <button key={s} onClick={() => changeStatus(selectedTask.id, s)} className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${selectedTask.status === s ? "bg-[hsl(221,45%,18%)] text-white border-[hsl(221,45%,18%)]" : "border-[hsl(220,20%,87%)] text-[hsl(220,15%,50%)] hover:border-[hsl(221,45%,30%)]"}`}>
                       {statusLabel[s]}
                     </button>
                   ))}
                 </div>
 
-                {/* Meta */}
-                <div className="grid grid-cols-1 gap-3">
+                <div className="grid grid-cols-1 gap-0">
                   <InfoRow icon="User" label="Ответственный" value={selectedTask.responsible} />
                   <InfoRow icon="UserCheck" label="Назначил" value={selectedTask.assignedBy} />
-                  <InfoRow
-                    icon="Calendar"
-                    label="Срок исполнения"
-                    value={new Date(selectedTask.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
-                    valueClass={isOverdue(selectedTask.deadline) && selectedTask.status !== "done" ? "text-red-600 font-medium" : ""}
-                  />
+                  <InfoRow icon="Calendar" label="Срок исполнения" value={new Date(selectedTask.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })} valueClass={isOverdue(selectedTask.deadline) && selectedTask.status !== "done" ? "text-red-600 font-medium" : ""} />
                 </div>
 
-                {/* Description */}
                 <div>
                   <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-2">Описание</div>
-                  <div className="text-sm text-[hsl(220,30%,20%)] leading-relaxed bg-[hsl(220,15%,97%)] rounded-sm p-3">
-                    {selectedTask.description}
-                  </div>
+                  <div className="text-sm text-[hsl(220,30%,20%)] leading-relaxed bg-[hsl(220,15%,97%)] rounded-sm p-3">{selectedTask.description || <span className="italic text-[hsl(220,15%,60%)]">Не указано</span>}</div>
                 </div>
 
-                {/* Comments */}
                 <div>
                   <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Icon name="MessageSquare" size={12} />
@@ -471,20 +470,10 @@ export default function Index() {
                         <p className="text-sm text-[hsl(220,20%,30%)] leading-relaxed">{c.text}</p>
                       </div>
                     ))}
-                    {selectedTask.comments.length === 0 && (
-                      <p className="text-xs text-[hsl(220,15%,60%)] italic">Комментариев пока нет</p>
-                    )}
+                    {selectedTask.comments.length === 0 && <p className="text-xs text-[hsl(220,15%,60%)] italic">Комментариев пока нет</p>}
                   </div>
-
                   <div className="mt-3 flex gap-2">
-                    <input
-                      type="text"
-                      value={newComment}
-                      onChange={(e) => setNewComment(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addComment()}
-                      placeholder="Добавить комментарий..."
-                      className="flex-1 text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] placeholder:text-[hsl(220,15%,65%)]"
-                    />
+                    <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()} placeholder="Добавить комментарий..." className="flex-1 text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] placeholder:text-[hsl(220,15%,65%)]" />
                     <button onClick={addComment} className="btn-primary flex items-center gap-1.5">
                       <Icon name="Send" size={13} />
                       Отправить
@@ -494,69 +483,117 @@ export default function Index() {
               </div>
             </div>
           )}
+
+          {/* EMPLOYEE DETAIL PANEL */}
+          {selectedEmployee && section === "employees" && (
+            <div className="flex-1 border-l border-[hsl(220,20%,87%)] bg-white overflow-y-auto animate-slide-in">
+              <div className="sticky top-0 bg-white border-b border-[hsl(220,20%,87%)] px-6 py-4 flex items-center justify-between z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white font-semibold text-sm">
+                    {selectedEmployee.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                  </div>
+                  <div>
+                    <div className="font-semibold text-[hsl(220,30%,12%)] text-sm">{selectedEmployee.name}</div>
+                    <div className="text-xs text-[hsl(220,15%,50%)]">{selectedEmployee.position}</div>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedEmployee(null)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
+                  <Icon name="X" size={16} />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-5">
+                <div className="grid grid-cols-1 gap-0">
+                  <InfoRow icon="Briefcase" label="Должность" value={selectedEmployee.position} />
+                  <InfoRow icon="Building" label="Отдел" value={selectedEmployee.department} />
+                  <InfoRow icon="Mail" label="Email" value={selectedEmployee.email} />
+                </div>
+
+                <div>
+                  <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-3 flex items-center justify-between">
+                    <span className="flex items-center gap-2"><Icon name="ClipboardList" size={12} />Задачи сотрудника ({employeeTasks(selectedEmployee).length})</span>
+                  </div>
+
+                  {employeeTasks(selectedEmployee).length === 0 && (
+                    <div className="text-center py-8 text-[hsl(220,15%,55%)]">
+                      <Icon name="Inbox" size={28} className="mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Нет активных задач</p>
+                    </div>
+                  )}
+
+                  <div className="space-y-2.5">
+                    {employeeTasks(selectedEmployee).map((task) => (
+                      <div key={task.id} className="border border-[hsl(220,20%,87%)] rounded-sm p-3.5 bg-[hsl(220,25%,98%)]">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-xs text-[hsl(220,15%,55%)] font-mono-ibm">{task.number}</span>
+                              <span className={`status-badge ${statusClass[task.status]}`}>{statusLabel[task.status]}</span>
+                            </div>
+                            <div className="text-sm font-medium text-[hsl(220,30%,12%)] leading-snug">{task.title}</div>
+                            <div className={`text-xs mt-1.5 flex items-center gap-1 ${isOverdue(task.deadline) && task.status !== "done" ? "text-red-500" : "text-[hsl(220,15%,55%)]"}`}>
+                              <Icon name="Calendar" size={11} />
+                              {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
+                            </div>
+                          </div>
+                          <button onClick={() => openReassign(task.id)} title="Перераспределить задачу" className="flex-shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm border border-[hsl(220,20%,87%)] text-[hsl(220,15%,45%)] hover:border-[hsl(42,80%,50%)] hover:text-[hsl(42,60%,35%)] hover:bg-[hsl(42,80%,96%)] transition-all">
+                            <Icon name="ArrowRightLeft" size={12} />
+                            Передать
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
-      {/* New Task Modal */}
-      {showNewTaskModal && (
+      {/* TASK MODAL (Create / Edit) */}
+      {taskModal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-md shadow-2xl w-full max-w-lg mx-4 animate-fade-in">
             <div className="px-6 py-5 border-b border-[hsl(220,20%,87%)] flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-[hsl(220,30%,12%)]">Новое указание</h2>
-                <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">Заполните информацию о задаче</p>
+                <h2 className="font-semibold text-[hsl(220,30%,12%)]">{taskModal.mode === "edit" ? "Редактировать указание" : "Новое указание"}</h2>
+                <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">{taskModal.mode === "edit" ? "Внесите изменения и сохраните" : "Заполните информацию о задаче"}</p>
               </div>
-              <button onClick={() => setShowNewTaskModal(false)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
+              <button onClick={() => setTaskModal({ open: false, mode: "create" })} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
                 <Icon name="X" size={16} />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-4">
+            <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Заголовок *</label>
-                <input
-                  type="text"
-                  value={newTask.title}
-                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                  placeholder="Введите название задачи..."
-                  className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]"
-                />
+                <input type="text" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="Введите название..." className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
               </div>
 
               <div>
                 <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Описание</label>
-                <textarea
-                  value={newTask.description}
-                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                  placeholder="Подробное описание задачи..."
-                  rows={3}
-                  className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] resize-none"
-                />
+                <textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} placeholder="Подробное описание..." rows={3} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] resize-none" />
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Назначил</label>
+                <input type="text" value={taskForm.assignedBy} onChange={(e) => setTaskForm({ ...taskForm, assignedBy: e.target.value })} placeholder="Кто назначает задачу..." className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Ответственный *</label>
-                  <select
-                    value={newTask.responsible}
-                    onChange={(e) => setNewTask({ ...newTask, responsible: e.target.value })}
-                    className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]"
-                  >
+                  <select value={taskForm.responsible} onChange={(e) => setTaskForm({ ...taskForm, responsible: e.target.value })} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]">
                     <option value="">Выбрать...</option>
                     {INITIAL_EMPLOYEES.map((e) => (
-                      <option key={e.id} value={e.name.split(" ").slice(0, 2).join(" ").replace(/(\w+)\s(\w)(\w+)/, "$1 $2.")}>
-                        {e.name}
-                      </option>
+                      <option key={e.id} value={e.shortName}>{e.name}</option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Приоритет</label>
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as Priority })}
-                    className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]"
-                  >
+                  <select value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value as Priority })} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]">
                     <option value="high">Высокий</option>
                     <option value="medium">Средний</option>
                     <option value="low">Низкий</option>
@@ -566,20 +603,55 @@ export default function Index() {
 
               <div>
                 <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Срок исполнения *</label>
-                <input
-                  type="date"
-                  value={newTask.deadline}
-                  onChange={(e) => setNewTask({ ...newTask, deadline: e.target.value })}
-                  className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]"
-                />
+                <input type="date" value={taskForm.deadline} onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
               </div>
             </div>
 
             <div className="px-6 py-4 border-t border-[hsl(220,20%,87%)] flex justify-end gap-2">
-              <button onClick={() => setShowNewTaskModal(false)} className="btn-ghost">Отмена</button>
-              <button onClick={createTask} className="btn-gold flex items-center gap-2">
-                <Icon name="Plus" size={14} />
-                Создать
+              <button onClick={() => setTaskModal({ open: false, mode: "create" })} className="btn-ghost">Отмена</button>
+              <button onClick={saveTask} className="btn-gold flex items-center gap-2">
+                <Icon name={taskModal.mode === "edit" ? "Save" : "Plus"} size={14} />
+                {taskModal.mode === "edit" ? "Сохранить" : "Создать"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* REASSIGN MODAL */}
+      {reassignModal.open && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-md shadow-2xl w-full max-w-sm mx-4 animate-fade-in">
+            <div className="px-6 py-5 border-b border-[hsl(220,20%,87%)] flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-[hsl(220,30%,12%)]">Передать задачу</h2>
+                <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">Выберите нового ответственного</p>
+              </div>
+              <button onClick={() => setReassignModal({ open: false })} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
+                <Icon name="X" size={16} />
+              </button>
+            </div>
+
+            <div className="px-6 py-5 space-y-2">
+              {INITIAL_EMPLOYEES.map((emp) => (
+                <label key={emp.id} className={`flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-all ${reassignTo === emp.shortName ? "border-[hsl(221,45%,30%)] bg-[hsl(221,45%,97%)]" : "border-[hsl(220,20%,87%)] hover:border-[hsl(220,20%,75%)]"}`}>
+                  <input type="radio" name="reassign" value={emp.shortName} checked={reassignTo === emp.shortName} onChange={() => setReassignTo(emp.shortName)} className="accent-[hsl(221,45%,18%)]" />
+                  <div className="w-7 h-7 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                    {emp.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-[hsl(220,30%,12%)]">{emp.name}</div>
+                    <div className="text-xs text-[hsl(220,15%,50%)]">{emp.position}</div>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="px-6 py-4 border-t border-[hsl(220,20%,87%)] flex justify-end gap-2">
+              <button onClick={() => setReassignModal({ open: false })} className="btn-ghost">Отмена</button>
+              <button onClick={confirmReassign} disabled={!reassignTo} className="btn-gold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                <Icon name="ArrowRightLeft" size={14} />
+                Передать
               </button>
             </div>
           </div>
@@ -589,14 +661,10 @@ export default function Index() {
   );
 }
 
-function TaskCard({ task, onClick, isSelected }: { task: Task; onClick: () => void; isSelected: boolean }) {
-  const isOverdue = new Date(task.deadline) < new Date() && task.status !== "done";
-
+function TaskCard({ task, onClick, isSelected, onEdit, onDelete }: { task: Task; onClick: () => void; isSelected: boolean; onEdit: () => void; onDelete: () => void }) {
+  const overdue = new Date(task.deadline) < new Date() && task.status !== "done";
   return (
-    <div
-      onClick={onClick}
-      className={`card-corp p-4 cursor-pointer transition-all duration-150 ${isSelected ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}
-    >
+    <div onClick={onClick} className={`card-corp p-4 cursor-pointer transition-all duration-150 group ${isSelected ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1.5">
@@ -605,24 +673,26 @@ function TaskCard({ task, onClick, isSelected }: { task: Task; onClick: () => vo
           </div>
           <div className="font-medium text-sm text-[hsl(220,30%,12%)] leading-snug line-clamp-2">{task.title}</div>
           <div className="flex items-center gap-3 mt-2 text-xs text-[hsl(220,15%,55%)]">
-            <span className="flex items-center gap-1">
-              <Icon name="User" size={11} />
-              {task.responsible}
-            </span>
-            <span className={`flex items-center gap-1 ${isOverdue ? "text-red-600 font-medium" : ""}`}>
+            <span className="flex items-center gap-1"><Icon name="User" size={11} />{task.responsible}</span>
+            <span className={`flex items-center gap-1 ${overdue ? "text-red-600 font-medium" : ""}`}>
               <Icon name="Calendar" size={11} />
               {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
             </span>
-            {task.comments.length > 0 && (
-              <span className="flex items-center gap-1">
-                <Icon name="MessageSquare" size={11} />
-                {task.comments.length}
-              </span>
-            )}
+            {task.comments.length > 0 && <span className="flex items-center gap-1"><Icon name="MessageSquare" size={11} />{task.comments.length}</span>}
           </div>
         </div>
-        <div className={`flex-shrink-0 text-xs font-medium ${priorityClass[task.priority]}`}>
-          <Icon name={task.priority === "high" ? "AlertTriangle" : task.priority === "medium" ? "Minus" : "ChevronDown"} size={14} fallback="Minus" />
+        <div className="flex flex-col items-end gap-1.5">
+          <span className={`text-xs ${priorityClass[task.priority]}`}>
+            <Icon name={task.priority === "high" ? "AlertTriangle" : task.priority === "medium" ? "Minus" : "ChevronDown"} size={14} fallback="Minus" />
+          </span>
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button onClick={(e) => { e.stopPropagation(); onEdit(); }} className="p-1 rounded-sm hover:bg-[hsl(42,80%,93%)] text-[hsl(42,60%,40%)] transition-colors" title="Редактировать">
+              <Icon name="Pencil" size={12} />
+            </button>
+            <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-1 rounded-sm hover:bg-red-50 text-red-400 transition-colors" title="Удалить">
+              <Icon name="Trash2" size={12} />
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -637,6 +707,15 @@ function InfoRow({ icon, label, value, valueClass = "" }: { icon: string; label:
       </div>
       <div className="text-xs text-[hsl(220,15%,50%)] w-28 flex-shrink-0">{label}</div>
       <div className={`text-sm text-[hsl(220,30%,15%)] font-medium ${valueClass}`}>{value}</div>
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="text-center py-16 text-[hsl(220,15%,50%)]">
+      <Icon name="Inbox" size={40} className="mx-auto mb-3 opacity-30" />
+      <p>Нет документов по выбранному фильтру</p>
     </div>
   );
 }
