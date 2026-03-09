@@ -134,7 +134,7 @@ function AvatarGroup({ names, max = 3 }: { names: string[]; max?: number }) {
 export default function Index() {
   const [section, setSection] = useState<Section>("orders");
   const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
-  const [employees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newComment, setNewComment] = useState("");
   const [filterStatus, setFilterStatus] = useState<Status | "all">("all");
@@ -145,6 +145,12 @@ export default function Index() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [reassignModal, setReassignModal] = useState<{ open: boolean; taskId?: number }>({ open: false });
   const [reassignSelected, setReassignSelected] = useState<string[]>([]);
+
+  // Employee management
+  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const [empModal, setEmpModal] = useState(false);
+  const [deleteEmpModal, setDeleteEmpModal] = useState<Employee | null>(null);
+  const [empForm, setEmpForm] = useState({ name: "", position: "", department: "", email: "" });
 
   const orderTasks = tasks.filter((t) => t.section === "order");
   const reportTasks = tasks.filter((t) => t.section === "report");
@@ -222,6 +228,41 @@ export default function Index() {
   const deleteTask = (taskId: number) => {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     if (selectedTask?.id === taskId) setSelectedTask(null);
+  };
+
+  // --- Employee CRUD ---
+  const makeShortName = (fullName: string) => {
+    const parts = fullName.trim().split(" ");
+    if (parts.length < 2) return fullName;
+    return `${parts[0]} ${parts[1][0]}.${parts[2] ? parts[2][0] + "." : ""}`;
+  };
+
+  const addEmployee = () => {
+    if (!empForm.name || !empForm.position || !empForm.department) return;
+    const shortName = makeShortName(empForm.name);
+    const newEmp: Employee = {
+      id: Date.now(),
+      name: empForm.name.trim(),
+      shortName,
+      position: empForm.position.trim(),
+      department: empForm.department.trim(),
+      email: empForm.email.trim(),
+    };
+    setEmployees((prev) => [...prev, newEmp]);
+    setEmpForm({ name: "", position: "", department: "", email: "" });
+    setEmpModal(false);
+  };
+
+  const confirmDeleteEmployee = () => {
+    if (!deleteEmpModal) return;
+    // Remove from tasks too
+    setTasks((prev) => prev.map((t) => ({
+      ...t,
+      responsible: t.responsible.filter((r) => r !== deleteEmpModal.shortName),
+    })));
+    setEmployees((prev) => prev.filter((e) => e.id !== deleteEmpModal.id));
+    if (selectedEmployee?.id === deleteEmpModal.id) setSelectedEmployee(null);
+    setDeleteEmpModal(null);
   };
 
   const addComment = () => {
@@ -324,6 +365,11 @@ export default function Index() {
                 </button>
               </>
             )}
+            {section === "employees" && (
+              <button onClick={() => { setEmpForm({ name: "", position: "", department: "", email: "" }); setEmpModal(true); }} className="btn-gold flex items-center gap-2">
+                <Icon name="UserPlus" size={15} />Добавить сотрудника
+              </button>
+            )}
           </div>
         </header>
 
@@ -384,7 +430,7 @@ export default function Index() {
                   const overdue = empTasks.filter((t) => t.status === "overdue").length;
                   return (
                     <div key={emp.id} onClick={() => { setSelectedEmployee(emp); setSelectedTask(null); }}
-                      className={`card-corp p-5 cursor-pointer transition-all duration-150 ${selectedEmployee?.id === emp.id ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
+                      className={`card-corp p-5 cursor-pointer transition-all duration-150 group ${selectedEmployee?.id === emp.id ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
@@ -396,17 +442,26 @@ export default function Index() {
                             <div className="text-[hsl(220,15%,60%)] text-xs">{emp.department}</div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <div className="text-xs text-[hsl(220,15%,50%)] mb-1">Задачи</div>
-                          <div className="text-sm font-semibold text-[hsl(220,30%,12%)]">{done} / {empTasks.length}</div>
-                          <div className="w-20 h-1.5 bg-[hsl(220,15%,93%)] rounded-full mt-1.5 overflow-hidden">
-                            <div className="h-full bg-[hsl(42,80%,50%)] rounded-full transition-all" style={{ width: empTasks.length ? `${(done / empTasks.length) * 100}%` : "0%" }} />
+                        <div className="flex items-start gap-3">
+                          <div className="text-right">
+                            <div className="text-xs text-[hsl(220,15%,50%)] mb-1">Задачи</div>
+                            <div className="text-sm font-semibold text-[hsl(220,30%,12%)]">{done} / {empTasks.length}</div>
+                            <div className="w-20 h-1.5 bg-[hsl(220,15%,93%)] rounded-full mt-1.5 overflow-hidden">
+                              <div className="h-full bg-[hsl(42,80%,50%)] rounded-full transition-all" style={{ width: empTasks.length ? `${(done / empTasks.length) * 100}%` : "0%" }} />
+                            </div>
+                            {overdue > 0 && <div className="text-xs text-red-500 mt-1">{overdue} просрочено</div>}
                           </div>
-                          {overdue > 0 && <div className="text-xs text-red-500 mt-1">{overdue} просрочено</div>}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteEmpModal(emp); }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-sm hover:bg-red-50 text-red-400 flex-shrink-0 mt-0.5"
+                            title="Удалить сотрудника"
+                          >
+                            <Icon name="Trash2" size={14} />
+                          </button>
                         </div>
                       </div>
                       <div className="mt-3 pt-3 border-t border-[hsl(220,20%,93%)] flex items-center gap-1.5 text-xs text-[hsl(220,15%,55%)]">
-                        <Icon name="Mail" size={12} />{emp.email}
+                        <Icon name="Mail" size={12} />{emp.email || "—"}
                       </div>
                     </div>
                   );
@@ -465,7 +520,7 @@ export default function Index() {
                   </div>
                   <div className="space-y-2">
                     {selectedTask.responsible.map((name) => {
-                      const emp = INITIAL_EMPLOYEES.find((e) => e.shortName === name);
+                      const emp = employees.find((e) => e.shortName === name);
                       return (
                         <div key={name} className="flex items-center gap-2.5 py-1.5">
                           <div className="w-7 h-7 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
@@ -642,7 +697,7 @@ export default function Index() {
                   Ответственные * {taskForm.responsible.length > 0 && <span className="text-[hsl(221,45%,40%)]">({taskForm.responsible.length} выбрано)</span>}
                 </label>
                 <div className="space-y-1.5 border border-[hsl(220,20%,87%)] rounded-sm p-2 max-h-40 overflow-y-auto">
-                  {INITIAL_EMPLOYEES.map((emp) => {
+                  {employees.map((emp) => {
                     const checked = taskForm.responsible.includes(emp.shortName);
                     return (
                       <label key={emp.id} className={`flex items-center gap-2.5 p-2 rounded-sm cursor-pointer transition-colors ${checked ? "bg-[hsl(221,45%,96%)]" : "hover:bg-[hsl(220,15%,97%)]"}`}>
@@ -703,6 +758,87 @@ export default function Index() {
         </div>
       )}
 
+      {/* ADD EMPLOYEE MODAL */}
+      {empModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-md shadow-2xl w-full max-w-md mx-4 animate-fade-in">
+            <div className="px-6 py-5 border-b border-[hsl(220,20%,87%)] flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold text-[hsl(220,30%,12%)]">Добавить сотрудника</h2>
+                <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">Заполните данные нового сотрудника</p>
+              </div>
+              <button onClick={() => setEmpModal(false)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
+                <Icon name="X" size={16} />
+              </button>
+            </div>
+            <div className="px-6 py-5 space-y-4">
+              <div>
+                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">ФИО * <span className="font-normal text-[hsl(220,15%,55%)]">(Фамилия Имя Отчество)</span></label>
+                <input type="text" value={empForm.name} onChange={(e) => setEmpForm({ ...empForm, name: e.target.value })}
+                  placeholder="Иванов Иван Иванович" className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Должность *</label>
+                <input type="text" value={empForm.position} onChange={(e) => setEmpForm({ ...empForm, position: e.target.value })}
+                  placeholder="Главный специалист" className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Отдел *</label>
+                <input type="text" value={empForm.department} onChange={(e) => setEmpForm({ ...empForm, department: e.target.value })}
+                  placeholder="Финансовый отдел" className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Email</label>
+                <input type="email" value={empForm.email} onChange={(e) => setEmpForm({ ...empForm, email: e.target.value })}
+                  placeholder="ivanov@corp.ru" className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-[hsl(220,20%,87%)] flex justify-end gap-2">
+              <button onClick={() => setEmpModal(false)} className="btn-ghost">Отмена</button>
+              <button onClick={addEmployee} disabled={!empForm.name || !empForm.position || !empForm.department}
+                className="btn-gold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                <Icon name="UserPlus" size={14} />Добавить
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE EMPLOYEE CONFIRM */}
+      {deleteEmpModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
+          <div className="bg-white rounded-md shadow-2xl w-full max-w-sm mx-4 animate-fade-in">
+            <div className="px-6 py-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0">
+                  <Icon name="AlertTriangle" size={18} className="text-red-500" />
+                </div>
+                <div>
+                  <div className="font-semibold text-[hsl(220,30%,12%)]">Удалить сотрудника?</div>
+                  <div className="text-xs text-[hsl(220,15%,50%)] mt-0.5">Это действие нельзя отменить</div>
+                </div>
+              </div>
+              <div className="bg-[hsl(220,15%,97%)] rounded-sm p-3 mb-4">
+                <div className="font-medium text-sm text-[hsl(220,30%,12%)]">{deleteEmpModal.name}</div>
+                <div className="text-xs text-[hsl(220,15%,50%)] mt-0.5">{deleteEmpModal.position} · {deleteEmpModal.department}</div>
+                {employeeTasks(deleteEmpModal).length > 0 && (
+                  <div className="text-xs text-amber-600 mt-2 flex items-center gap-1">
+                    <Icon name="AlertCircle" size={11} />
+                    Сотрудник будет удалён из {employeeTasks(deleteEmpModal).length} задач
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setDeleteEmpModal(null)} className="btn-ghost">Отмена</button>
+                <button onClick={confirmDeleteEmployee} className="flex items-center gap-2 bg-red-600 text-white px-4 py-2 rounded-sm text-sm font-medium hover:bg-red-700 transition-colors">
+                  <Icon name="Trash2" size={14} />Удалить
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* REASSIGN MODAL — multi-select */}
       {reassignModal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
@@ -718,7 +854,7 @@ export default function Index() {
             </div>
 
             <div className="px-6 py-4 space-y-1.5">
-              {INITIAL_EMPLOYEES.map((emp) => {
+              {employees.map((emp) => {
                 const checked = reassignSelected.includes(emp.shortName);
                 return (
                   <label key={emp.id} className={`flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-all ${checked ? "border-[hsl(221,45%,30%)] bg-[hsl(221,45%,97%)]" : "border-[hsl(220,20%,87%)] hover:border-[hsl(220,20%,75%)]"}`}>
