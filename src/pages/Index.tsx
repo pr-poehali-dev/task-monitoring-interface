@@ -1,5 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
+
+const API = {
+  employees: "https://functions.poehali.dev/5ef255bd-25c0-4b58-ace7-574f3f32dd6c",
+  tasks: "https://functions.poehali.dev/0f87aeaa-6ca6-4364-b0c8-f01a8dc6fc12",
+  comments: "https://functions.poehali.dev/ebb0474f-ae16-42df-bfa5-4158718d7d7e",
+};
 
 type Status = "new" | "progress" | "done" | "overdue";
 type Priority = "high" | "medium" | "low";
@@ -36,62 +42,7 @@ interface Employee {
   email: string;
 }
 
-const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 1, name: "Иванова Анна Сергеевна", shortName: "Иванова А.С.", position: "Главный бухгалтер", department: "Финансовый отдел", email: "ivanova@corp.ru" },
-  { id: 2, name: "Сидоров Михаил Дмитриевич", shortName: "Сидоров М.Д.", position: "Специалист по охране труда", department: "HR отдел", email: "sidorov@corp.ru" },
-  { id: 3, name: "Козлова Екатерина Викторовна", shortName: "Козлова Е.В.", position: "HR-менеджер", department: "HR отдел", email: "kozlova@corp.ru" },
-  { id: 4, name: "Морозов Кирилл Павлович", shortName: "Морозов К.П.", position: "Руководитель отдела продаж", department: "Отдел продаж", email: "morozov@corp.ru" },
-  { id: 5, name: "Новикова Татьяна Александровна", shortName: "Новикова Т.А.", position: "Операционный менеджер", department: "Административный отдел", email: "novikova@corp.ru" },
-];
 
-const INITIAL_TASKS: Task[] = [
-  {
-    id: 1, number: "УК-2024-001",
-    title: "Проверка финансовой отчётности за Q4",
-    description: "Провести внутренний аудит финансовых документов за четвёртый квартал 2024 года, сверить данные с бухгалтерией.",
-    responsible: ["Иванова А.С.", "Морозов К.П."],
-    assignedBy: "Директор Петров В.И.", deadline: "2026-03-20", status: "progress", priority: "high",
-    comments: [
-      { id: 1, author: "Иванова А.С.", text: "Начала работу, запросила документы у бухгалтерии.", date: "05.03.2026" },
-      { id: 2, author: "Петров В.И.", text: "Срок не переносить, отчёт нужен до конца месяца.", date: "06.03.2026" },
-    ],
-    section: "order",
-  },
-  {
-    id: 2, number: "УК-2024-002",
-    title: "Обновление регламента охраны труда",
-    description: "Актуализировать внутренние документы по охране труда в соответствии с новыми требованиями законодательства.",
-    responsible: ["Сидоров М.Д."],
-    assignedBy: "Директор Петров В.И.", deadline: "2026-02-28", status: "overdue", priority: "high",
-    comments: [{ id: 1, author: "Сидоров М.Д.", text: "Запросил актуальные нормативы, ожидаю ответ от юридического отдела.", date: "01.03.2026" }],
-    section: "order",
-  },
-  {
-    id: 3, number: "УК-2024-003",
-    title: "Организация корпоративного обучения",
-    description: "Подготовить программу обучения для новых сотрудников отдела продаж. Согласовать с HR.",
-    responsible: ["Козлова Е.В.", "Новикова Т.А."],
-    assignedBy: "Менеджер Новикова Т.А.", deadline: "2026-04-01", status: "new", priority: "medium",
-    comments: [], section: "order",
-  },
-  {
-    id: 4, number: "ОТ-2024-001",
-    title: "Квартальный отчёт по продажам",
-    description: "Подготовить сводный отчёт по продажам за первый квартал 2026 года с разбивкой по регионам.",
-    responsible: ["Морозов К.П."],
-    assignedBy: "Директор Петров В.И.", deadline: "2026-04-10", status: "new", priority: "high",
-    comments: [], section: "report", linkedOrderId: 1,
-  },
-  {
-    id: 5, number: "ОТ-2024-002",
-    title: "Отчёт по кадровому составу",
-    description: "Подготовить ежемесячный отчёт по движению кадров, текучести и укомплектованности штата.",
-    responsible: ["Козлова Е.В."],
-    assignedBy: "HR-директор Смирнова Л.Г.", deadline: "2026-03-15", status: "done", priority: "medium",
-    comments: [{ id: 1, author: "Козлова Е.В.", text: "Отчёт подготовлен и направлен на согласование.", date: "08.03.2026" }],
-    section: "report", linkedOrderId: 2,
-  },
-];
 
 const statusLabel: Record<Status, string> = { new: "Новое", progress: "В работе", done: "Выполнено", overdue: "Просрочено" };
 const priorityLabel: Record<Priority, string> = { high: "Высокий", medium: "Средний", low: "Низкий" };
@@ -135,7 +86,8 @@ function AvatarGroup({ names, max = 3 }: { names: string[]; max?: number }) {
 
 export default function Index() {
   const [section, setSection] = useState<Section>("orders");
-  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [newComment, setNewComment] = useState("");
@@ -148,11 +100,23 @@ export default function Index() {
   const [reassignModal, setReassignModal] = useState<{ open: boolean; taskId?: number }>({ open: false });
   const [reassignSelected, setReassignSelected] = useState<string[]>([]);
 
-  // Employee management
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [empModal, setEmpModal] = useState(false);
   const [deleteEmpModal, setDeleteEmpModal] = useState<Employee | null>(null);
   const [empForm, setEmpForm] = useState({ name: "", position: "", department: "", email: "" });
+
+  const loadData = useCallback(async () => {
+    setLoading(true);
+    const [tasksRes, empRes] = await Promise.all([
+      fetch(API.tasks).then((r) => r.json()),
+      fetch(API.employees).then((r) => r.json()),
+    ]);
+    setTasks(tasksRes.filter((t: Task) => t.title !== "__deleted__"));
+    setEmployees(empRes);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const orderTasks = tasks.filter((t) => t.section === "order");
   const reportTasks = tasks.filter((t) => t.section === "report");
@@ -197,94 +161,100 @@ export default function Index() {
     setTaskModal({ open: true, mode: "edit", editId: task.id });
   };
 
-  const saveTask = () => {
+  const saveTask = async () => {
     if (!taskForm.title || taskForm.responsible.length === 0 || !taskForm.deadline) return;
+    const isReport = section === "reports" || (taskModal.mode === "edit" && tasks.find((t) => t.id === taskModal.editId)?.section === "report");
     if (taskModal.mode === "edit" && taskModal.editId !== undefined) {
-      const updated = tasks.map((t) =>
-        t.id === taskModal.editId
-          ? { ...t, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy, linkedOrderId: taskForm.linkedOrderId }
-          : t
-      );
-      setTasks(updated);
-      if (selectedTask?.id === taskModal.editId) {
-        setSelectedTask({ ...selectedTask, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy, linkedOrderId: taskForm.linkedOrderId });
-      }
+      await fetch(`${API.tasks}/${taskModal.editId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: taskForm.title, description: taskForm.description,
+          responsible: taskForm.responsible, deadline: taskForm.deadline,
+          priority: taskForm.priority, assignedBy: taskForm.assignedBy,
+          linkedOrderId: taskForm.linkedOrderId,
+        }),
+      });
     } else {
-      const isReport = section === "reports";
-      const task: Task = {
-        id: Date.now(),
-        number: isReport
-          ? `ОТ-2026-${String(reportTasks.length + 1).padStart(3, "0")}`
-          : `УК-2026-${String(orderTasks.length + 1).padStart(3, "0")}`,
-        title: taskForm.title,
-        description: taskForm.description,
-        responsible: taskForm.responsible,
-        assignedBy: taskForm.assignedBy,
-        deadline: taskForm.deadline,
-        status: "new",
-        priority: taskForm.priority,
-        comments: [],
-        section: isReport ? "report" : "order",
-        linkedOrderId: isReport ? taskForm.linkedOrderId : undefined,
-      };
-      setTasks((prev) => [...prev, task]);
+      const number = isReport
+        ? `ОТ-2026-${String(reportTasks.length + 1).padStart(3, "0")}`
+        : `УК-2026-${String(orderTasks.length + 1).padStart(3, "0")}`;
+      await fetch(API.tasks, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number, title: taskForm.title, description: taskForm.description,
+          responsible: taskForm.responsible, assignedBy: taskForm.assignedBy,
+          deadline: taskForm.deadline, priority: taskForm.priority,
+          section: isReport ? "report" : "order",
+          linkedOrderId: isReport ? taskForm.linkedOrderId : undefined,
+        }),
+      });
     }
     setTaskModal({ open: false, mode: "create" });
+    await loadData();
+    if (taskModal.mode === "edit" && taskModal.editId) {
+      setSelectedTask(null);
+    }
   };
 
-  const deleteTask = (taskId: number) => {
-    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+  const deleteTask = async (taskId: number) => {
+    await fetch(`${API.tasks}/${taskId}`, { method: "DELETE" });
     if (selectedTask?.id === taskId) setSelectedTask(null);
+    await loadData();
   };
 
-  // --- Employee CRUD ---
   const makeShortName = (fullName: string) => {
     const parts = fullName.trim().split(" ");
     if (parts.length < 2) return fullName;
     return `${parts[0]} ${parts[1][0]}.${parts[2] ? parts[2][0] + "." : ""}`;
   };
 
-  const addEmployee = () => {
+  const addEmployee = async () => {
     if (!empForm.name || !empForm.position || !empForm.department) return;
     const shortName = makeShortName(empForm.name);
-    const newEmp: Employee = {
-      id: Date.now(),
-      name: empForm.name.trim(),
-      shortName,
-      position: empForm.position.trim(),
-      department: empForm.department.trim(),
-      email: empForm.email.trim(),
-    };
-    setEmployees((prev) => [...prev, newEmp]);
+    await fetch(API.employees, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: empForm.name.trim(), shortName, position: empForm.position.trim(), department: empForm.department.trim(), email: empForm.email.trim() }),
+    });
     setEmpForm({ name: "", position: "", department: "", email: "" });
     setEmpModal(false);
+    await loadData();
   };
 
-  const confirmDeleteEmployee = () => {
+  const confirmDeleteEmployee = async () => {
     if (!deleteEmpModal) return;
-    // Remove from tasks too
-    setTasks((prev) => prev.map((t) => ({
-      ...t,
-      responsible: t.responsible.filter((r) => r !== deleteEmpModal.shortName),
-    })));
-    setEmployees((prev) => prev.filter((e) => e.id !== deleteEmpModal.id));
+    await fetch(`${API.employees}/${deleteEmpModal.id}`, { method: "DELETE" });
     if (selectedEmployee?.id === deleteEmpModal.id) setSelectedEmployee(null);
     setDeleteEmpModal(null);
+    await loadData();
   };
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim() || !selectedTask) return;
-    const comment: Comment = { id: Date.now(), author: "Вы", text: newComment.trim(), date: new Date().toLocaleDateString("ru-RU") };
+    const date = new Date().toLocaleDateString("ru-RU");
+    const res = await fetch(API.comments, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ taskId: selectedTask.id, author: "Вы", text: newComment.trim(), date }),
+    });
+    const comment: Comment = await res.json();
     const updated = tasks.map((t) => t.id === selectedTask.id ? { ...t, comments: [...t.comments, comment] } : t);
     setTasks(updated);
     setSelectedTask({ ...selectedTask, comments: [...selectedTask.comments, comment] });
     setNewComment("");
   };
 
-  const changeStatus = (taskId: number, status: Status) => {
+  const changeStatus = async (taskId: number, status: Status) => {
     const updated = tasks.map((t) => (t.id === taskId ? { ...t, status } : t));
     setTasks(updated);
     if (selectedTask?.id === taskId) setSelectedTask({ ...selectedTask, status });
+    await fetch(`${API.tasks}/${taskId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
   };
 
   const openReassign = (taskId: number) => {
@@ -299,8 +269,19 @@ export default function Index() {
     );
   };
 
-  const confirmReassign = () => {
+  const confirmReassign = async () => {
     if (reassignSelected.length === 0 || !reassignModal.taskId) return;
+    const task = tasks.find((t) => t.id === reassignModal.taskId);
+    if (!task) return;
+    await fetch(`${API.tasks}/${reassignModal.taskId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: task.title, description: task.description, assignedBy: task.assignedBy,
+        deadline: task.deadline, priority: task.priority, linkedOrderId: task.linkedOrderId,
+        responsible: reassignSelected,
+      }),
+    });
     const updated = tasks.map((t) => t.id === reassignModal.taskId ? { ...t, responsible: reassignSelected } : t);
     setTasks(updated);
     if (selectedTask?.id === reassignModal.taskId) setSelectedTask({ ...selectedTask, responsible: reassignSelected });
@@ -308,6 +289,17 @@ export default function Index() {
   };
 
   const isOverdue = (deadline: string) => new Date(deadline) < new Date();
+
+  if (loading) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-[hsl(220,25%,97%)]">
+        <div className="flex flex-col items-center gap-3 text-[hsl(220,15%,50%)]">
+          <Icon name="Loader2" size={32} className="animate-spin text-[hsl(221,45%,18%)]" />
+          <span className="text-sm">Загрузка данных...</span>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-[hsl(220,25%,97%)] font-ibm">

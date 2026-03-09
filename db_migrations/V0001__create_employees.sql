@@ -1,0 +1,1 @@
+CREATE TABLE t_p86624306_task_monitoring_inte.employees (id SERIAL PRIMARY KEY, name TEXT NOT NULL, short_name TEXT NOT NULL, position TEXT NOT NULL, department TEXT NOT NULL, email TEXT DEFAULT '', created_at TIMESTAMPTZ DEFAULT NOW())

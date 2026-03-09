@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "GET employees",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "bodyMatcher": "none"
+    }
+  ]
+}

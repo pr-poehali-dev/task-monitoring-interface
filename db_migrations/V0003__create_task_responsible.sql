@@ -1,0 +1,1 @@
+CREATE TABLE t_p86624306_task_monitoring_inte.task_responsible (task_id INTEGER NOT NULL REFERENCES t_p86624306_task_monitoring_inte.tasks(id), employee_short_name TEXT NOT NULL, PRIMARY KEY (task_id, employee_short_name))

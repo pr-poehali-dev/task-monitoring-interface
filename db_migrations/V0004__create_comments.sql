@@ -1,0 +1,1 @@
+CREATE TABLE t_p86624306_task_monitoring_inte.comments (id SERIAL PRIMARY KEY, task_id INTEGER NOT NULL REFERENCES t_p86624306_task_monitoring_inte.tasks(id), author TEXT NOT NULL, text TEXT NOT NULL, date TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW())

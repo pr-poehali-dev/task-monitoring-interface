@@ -1,0 +1,1 @@
+INSERT INTO t_p86624306_task_monitoring_inte.task_responsible (task_id, employee_short_name) VALUES (1, 'Иванова А.С.'), (1, 'Морозов К.П.'), (2, 'Сидоров М.Д.'), (3, 'Козлова Е.В.'), (3, 'Новикова Т.А.')
