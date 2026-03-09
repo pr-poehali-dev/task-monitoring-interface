@@ -24,6 +24,7 @@ interface Task {
   priority: Priority;
   comments: Comment[];
   section: "order" | "report";
+  linkedOrderId?: number;
 }
 
 interface Employee {
@@ -79,7 +80,7 @@ const INITIAL_TASKS: Task[] = [
     description: "Подготовить сводный отчёт по продажам за первый квартал 2026 года с разбивкой по регионам.",
     responsible: ["Морозов К.П."],
     assignedBy: "Директор Петров В.И.", deadline: "2026-04-10", status: "new", priority: "high",
-    comments: [], section: "report",
+    comments: [], section: "report", linkedOrderId: 1,
   },
   {
     id: 5, number: "ОТ-2024-002",
@@ -88,7 +89,7 @@ const INITIAL_TASKS: Task[] = [
     responsible: ["Козлова Е.В."],
     assignedBy: "HR-директор Смирнова Л.Г.", deadline: "2026-03-15", status: "done", priority: "medium",
     comments: [{ id: 1, author: "Козлова Е.В.", text: "Отчёт подготовлен и направлен на согласование.", date: "08.03.2026" }],
-    section: "report",
+    section: "report", linkedOrderId: 2,
   },
 ];
 
@@ -107,9 +108,10 @@ interface TaskFormState {
   deadline: string;
   priority: Priority;
   assignedBy: string;
+  linkedOrderId?: number;
 }
 
-const emptyForm: TaskFormState = { title: "", description: "", responsible: [], deadline: "", priority: "medium", assignedBy: "Директор Петров В.И." };
+const emptyForm: TaskFormState = { title: "", description: "", responsible: [], deadline: "", priority: "medium", assignedBy: "Директор Петров В.И.", linkedOrderId: undefined };
 
 // Avatar group for multiple responsibles
 function AvatarGroup({ names, max = 3 }: { names: string[]; max?: number }) {
@@ -190,6 +192,7 @@ export default function Index() {
       deadline: task.deadline,
       priority: task.priority,
       assignedBy: task.assignedBy,
+      linkedOrderId: task.linkedOrderId,
     });
     setTaskModal({ open: true, mode: "edit", editId: task.id });
   };
@@ -199,17 +202,20 @@ export default function Index() {
     if (taskModal.mode === "edit" && taskModal.editId !== undefined) {
       const updated = tasks.map((t) =>
         t.id === taskModal.editId
-          ? { ...t, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy }
+          ? { ...t, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy, linkedOrderId: taskForm.linkedOrderId }
           : t
       );
       setTasks(updated);
       if (selectedTask?.id === taskModal.editId) {
-        setSelectedTask({ ...selectedTask, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy });
+        setSelectedTask({ ...selectedTask, title: taskForm.title, description: taskForm.description, responsible: taskForm.responsible, deadline: taskForm.deadline, priority: taskForm.priority, assignedBy: taskForm.assignedBy, linkedOrderId: taskForm.linkedOrderId });
       }
     } else {
+      const isReport = section === "reports";
       const task: Task = {
         id: Date.now(),
-        number: `УК-2026-${String(tasks.length + 1).padStart(3, "0")}`,
+        number: isReport
+          ? `ОТ-2026-${String(reportTasks.length + 1).padStart(3, "0")}`
+          : `УК-2026-${String(orderTasks.length + 1).padStart(3, "0")}`,
         title: taskForm.title,
         description: taskForm.description,
         responsible: taskForm.responsible,
@@ -218,7 +224,8 @@ export default function Index() {
         status: "new",
         priority: taskForm.priority,
         comments: [],
-        section: section === "reports" ? "report" : "order",
+        section: isReport ? "report" : "order",
+        linkedOrderId: isReport ? taskForm.linkedOrderId : undefined,
       };
       setTasks((prev) => [...prev, task]);
     }
@@ -417,6 +424,7 @@ export default function Index() {
                     isSelected={selectedTask?.id === task.id}
                     onEdit={() => openEdit(task)}
                     onDelete={() => deleteTask(task.id)}
+                    linkedOrder={task.linkedOrderId ? tasks.find((t) => t.id === task.linkedOrderId) : undefined}
                   />
                 ))}
               </div>
@@ -548,12 +556,76 @@ export default function Index() {
                   />
                 </div>
 
+                {selectedTask.section === "report" && (() => {
+                  const linkedOrder = selectedTask.linkedOrderId ? tasks.find((t) => t.id === selectedTask.linkedOrderId) : null;
+                  return (
+                    <div>
+                      <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <Icon name="Link" size={12} />
+                        Связанное указание
+                      </div>
+                      {linkedOrder ? (
+                        <div className="flex items-start gap-3 bg-[hsl(221,45%,97%)] border border-[hsl(221,45%,85%)] rounded-sm p-3">
+                          <Icon name="FileText" size={14} className="text-[hsl(221,45%,40%)] mt-0.5 flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-mono text-[hsl(221,45%,40%)]">{linkedOrder.number}</div>
+                            <div className="text-sm font-medium text-[hsl(220,30%,12%)] mt-0.5 leading-snug">{linkedOrder.title}</div>
+                            <span className={`status-badge ${statusClass[linkedOrder.status]} mt-1 inline-flex`}>{statusLabel[linkedOrder.status]}</span>
+                          </div>
+                          <button
+                            onClick={() => setSelectedTask(linkedOrder)}
+                            className="text-xs text-[hsl(221,45%,40%)] hover:text-[hsl(221,45%,20%)] flex items-center gap-1 flex-shrink-0 transition-colors"
+                          >
+                            Открыть <Icon name="ArrowRight" size={11} />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-sm text-[hsl(220,15%,55%)] italic bg-[hsl(220,15%,97%)] rounded-sm p-3">Указание не привязано</div>
+                      )}
+                    </div>
+                  );
+                })()}
+
                 <div>
                   <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-2">Описание</div>
                   <div className="text-sm text-[hsl(220,30%,20%)] leading-relaxed bg-[hsl(220,15%,97%)] rounded-sm p-3">
                     {selectedTask.description || <span className="italic text-[hsl(220,15%,60%)]">Не указано</span>}
                   </div>
                 </div>
+
+                {selectedTask.section === "order" && (() => {
+                  const linkedReports = tasks.filter((t) => t.section === "report" && t.linkedOrderId === selectedTask.id);
+                  return (
+                    <div>
+                      <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-2 flex items-center gap-2">
+                        <Icon name="BarChart3" size={12} />
+                        Отчётные материалы ({linkedReports.length})
+                      </div>
+                      {linkedReports.length > 0 ? (
+                        <div className="space-y-2">
+                          {linkedReports.map((r) => (
+                            <div key={r.id} className="flex items-center gap-3 bg-[hsl(220,15%,97%)] border border-[hsl(220,20%,90%)] rounded-sm p-2.5">
+                              <Icon name="FileBarChart" size={13} className="text-[hsl(220,15%,50%)] flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-xs font-mono text-[hsl(220,15%,50%)]">{r.number}</div>
+                                <div className="text-sm font-medium text-[hsl(220,30%,12%)] leading-snug truncate">{r.title}</div>
+                              </div>
+                              <span className={`status-badge ${statusClass[r.status]} flex-shrink-0`}>{statusLabel[r.status]}</span>
+                              <button
+                                onClick={() => setSelectedTask(r)}
+                                className="text-xs text-[hsl(221,45%,40%)] hover:text-[hsl(221,45%,20%)] flex-shrink-0 transition-colors"
+                              >
+                                <Icon name="ArrowRight" size={13} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-[hsl(220,15%,55%)] italic bg-[hsl(220,15%,97%)] rounded-sm p-3">Отчётов по этому указанию нет</div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div>
                   <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -664,7 +736,11 @@ export default function Index() {
           <div className="bg-white rounded-md shadow-2xl w-full max-w-lg mx-4 animate-fade-in">
             <div className="px-6 py-5 border-b border-[hsl(220,20%,87%)] flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-[hsl(220,30%,12%)]">{taskModal.mode === "edit" ? "Редактировать указание" : "Новое указание"}</h2>
+                <h2 className="font-semibold text-[hsl(220,30%,12%)]">
+                  {taskModal.mode === "edit"
+                    ? (section === "reports" ? "Редактировать отчёт" : "Редактировать указание")
+                    : (section === "reports" ? "Новый отчёт" : "Новое указание")}
+                </h2>
                 <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">{taskModal.mode === "edit" ? "Внесите изменения и сохраните" : "Заполните информацию о задаче"}</p>
               </div>
               <button onClick={() => setTaskModal({ open: false, mode: "create" })} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
@@ -727,6 +803,25 @@ export default function Index() {
                   </div>
                 )}
               </div>
+
+              {(section === "reports" || (taskModal.mode === "edit" && tasks.find((t) => t.id === taskModal.editId)?.section === "report")) && (
+                <div>
+                  <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5 flex items-center gap-1.5">
+                    <Icon name="Link" size={12} />
+                    Связано с указанием
+                  </label>
+                  <select
+                    value={taskForm.linkedOrderId ?? ""}
+                    onChange={(e) => setTaskForm({ ...taskForm, linkedOrderId: e.target.value ? Number(e.target.value) : undefined })}
+                    className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]"
+                  >
+                    <option value="">— Не привязан —</option>
+                    {orderTasks.map((o) => (
+                      <option key={o.id} value={o.id}>{o.number} — {o.title}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -897,7 +992,7 @@ export default function Index() {
   );
 }
 
-function TaskCard({ task, onClick, isSelected, onEdit, onDelete }: { task: Task; onClick: () => void; isSelected: boolean; onEdit: () => void; onDelete: () => void }) {
+function TaskCard({ task, onClick, isSelected, onEdit, onDelete, linkedOrder }: { task: Task; onClick: () => void; isSelected: boolean; onEdit: () => void; onDelete: () => void; linkedOrder?: Task }) {
   const overdue = new Date(task.deadline) < new Date() && task.status !== "done";
   return (
     <div onClick={onClick} className={`card-corp p-4 cursor-pointer transition-all duration-150 group ${isSelected ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
@@ -906,6 +1001,11 @@ function TaskCard({ task, onClick, isSelected, onEdit, onDelete }: { task: Task;
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-xs text-[hsl(220,15%,55%)] font-mono-ibm">{task.number}</span>
             <span className={`status-badge ${statusClass[task.status]}`}>{statusLabel[task.status]}</span>
+            {linkedOrder && (
+              <span className="text-xs flex items-center gap-1 bg-[hsl(221,45%,95%)] text-[hsl(221,45%,35%)] px-1.5 py-0.5 rounded-sm font-medium">
+                <Icon name="Link" size={10} />{linkedOrder.number}
+              </span>
+            )}
           </div>
           <div className="font-medium text-sm text-[hsl(220,30%,12%)] leading-snug line-clamp-2">{task.title}</div>
           <div className="flex items-center gap-3 mt-2">
