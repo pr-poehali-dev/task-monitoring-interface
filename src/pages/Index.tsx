@@ -17,7 +17,7 @@ interface Task {
   number: string;
   title: string;
   description: string;
-  responsible: string;
+  responsible: string[];
   assignedBy: string;
   deadline: string;
   status: Status;
@@ -35,17 +35,21 @@ interface Employee {
   email: string;
 }
 
+const INITIAL_EMPLOYEES: Employee[] = [
+  { id: 1, name: "Иванова Анна Сергеевна", shortName: "Иванова А.С.", position: "Главный бухгалтер", department: "Финансовый отдел", email: "ivanova@corp.ru" },
+  { id: 2, name: "Сидоров Михаил Дмитриевич", shortName: "Сидоров М.Д.", position: "Специалист по охране труда", department: "HR отдел", email: "sidorov@corp.ru" },
+  { id: 3, name: "Козлова Екатерина Викторовна", shortName: "Козлова Е.В.", position: "HR-менеджер", department: "HR отдел", email: "kozlova@corp.ru" },
+  { id: 4, name: "Морозов Кирилл Павлович", shortName: "Морозов К.П.", position: "Руководитель отдела продаж", department: "Отдел продаж", email: "morozov@corp.ru" },
+  { id: 5, name: "Новикова Татьяна Александровна", shortName: "Новикова Т.А.", position: "Операционный менеджер", department: "Административный отдел", email: "novikova@corp.ru" },
+];
+
 const INITIAL_TASKS: Task[] = [
   {
-    id: 1,
-    number: "УК-2024-001",
+    id: 1, number: "УК-2024-001",
     title: "Проверка финансовой отчётности за Q4",
     description: "Провести внутренний аудит финансовых документов за четвёртый квартал 2024 года, сверить данные с бухгалтерией.",
-    responsible: "Иванова А.С.",
-    assignedBy: "Директор Петров В.И.",
-    deadline: "2026-03-20",
-    status: "progress",
-    priority: "high",
+    responsible: ["Иванова А.С.", "Морозов К.П."],
+    assignedBy: "Директор Петров В.И.", deadline: "2026-03-20", status: "progress", priority: "high",
     comments: [
       { id: 1, author: "Иванова А.С.", text: "Начала работу, запросила документы у бухгалтерии.", date: "05.03.2026" },
       { id: 2, author: "Петров В.И.", text: "Срок не переносить, отчёт нужен до конца месяца.", date: "06.03.2026" },
@@ -53,69 +57,39 @@ const INITIAL_TASKS: Task[] = [
     section: "order",
   },
   {
-    id: 2,
-    number: "УК-2024-002",
+    id: 2, number: "УК-2024-002",
     title: "Обновление регламента охраны труда",
     description: "Актуализировать внутренние документы по охране труда в соответствии с новыми требованиями законодательства.",
-    responsible: "Сидоров М.Д.",
-    assignedBy: "Директор Петров В.И.",
-    deadline: "2026-02-28",
-    status: "overdue",
-    priority: "high",
-    comments: [
-      { id: 1, author: "Сидоров М.Д.", text: "Запросил актуальные нормативы, ожидаю ответ от юридического отдела.", date: "01.03.2026" },
-    ],
+    responsible: ["Сидоров М.Д."],
+    assignedBy: "Директор Петров В.И.", deadline: "2026-02-28", status: "overdue", priority: "high",
+    comments: [{ id: 1, author: "Сидоров М.Д.", text: "Запросил актуальные нормативы, ожидаю ответ от юридического отдела.", date: "01.03.2026" }],
     section: "order",
   },
   {
-    id: 3,
-    number: "УК-2024-003",
+    id: 3, number: "УК-2024-003",
     title: "Организация корпоративного обучения",
     description: "Подготовить программу обучения для новых сотрудников отдела продаж. Согласовать с HR.",
-    responsible: "Козлова Е.В.",
-    assignedBy: "Менеджер Новикова Т.А.",
-    deadline: "2026-04-01",
-    status: "new",
-    priority: "medium",
-    comments: [],
-    section: "order",
+    responsible: ["Козлова Е.В.", "Новикова Т.А."],
+    assignedBy: "Менеджер Новикова Т.А.", deadline: "2026-04-01", status: "new", priority: "medium",
+    comments: [], section: "order",
   },
   {
-    id: 4,
-    number: "ОТ-2024-001",
+    id: 4, number: "ОТ-2024-001",
     title: "Квартальный отчёт по продажам",
     description: "Подготовить сводный отчёт по продажам за первый квартал 2026 года с разбивкой по регионам.",
-    responsible: "Морозов К.П.",
-    assignedBy: "Директор Петров В.И.",
-    deadline: "2026-04-10",
-    status: "new",
-    priority: "high",
-    comments: [],
-    section: "report",
+    responsible: ["Морозов К.П."],
+    assignedBy: "Директор Петров В.И.", deadline: "2026-04-10", status: "new", priority: "high",
+    comments: [], section: "report",
   },
   {
-    id: 5,
-    number: "ОТ-2024-002",
+    id: 5, number: "ОТ-2024-002",
     title: "Отчёт по кадровому составу",
     description: "Подготовить ежемесячный отчёт по движению кадров, текучести и укомплектованности штата.",
-    responsible: "Козлова Е.В.",
-    assignedBy: "HR-директор Смирнова Л.Г.",
-    deadline: "2026-03-15",
-    status: "done",
-    priority: "medium",
-    comments: [
-      { id: 1, author: "Козлова Е.В.", text: "Отчёт подготовлен и направлен на согласование.", date: "08.03.2026" },
-    ],
+    responsible: ["Козлова Е.В."],
+    assignedBy: "HR-директор Смирнова Л.Г.", deadline: "2026-03-15", status: "done", priority: "medium",
+    comments: [{ id: 1, author: "Козлова Е.В.", text: "Отчёт подготовлен и направлен на согласование.", date: "08.03.2026" }],
     section: "report",
   },
-];
-
-const INITIAL_EMPLOYEES: Employee[] = [
-  { id: 1, name: "Иванова Анна Сергеевна", shortName: "Иванова А.С.", position: "Главный бухгалтер", department: "Финансовый отдел", email: "ivanova@corp.ru" },
-  { id: 2, name: "Сидоров Михаил Дмитриевич", shortName: "Сидоров М.Д.", position: "Специалист по охране труда", department: "HR отдел", email: "sidorov@corp.ru" },
-  { id: 3, name: "Козлова Екатерина Викторовна", shortName: "Козлова Е.В.", position: "HR-менеджер", department: "HR отдел", email: "kozlova@corp.ru" },
-  { id: 4, name: "Морозов Кирилл Павлович", shortName: "Морозов К.П.", position: "Руководитель отдела продаж", department: "Отдел продаж", email: "morozov@corp.ru" },
-  { id: 5, name: "Новикова Татьяна Александровна", shortName: "Новикова Т.А.", position: "Операционный менеджер", department: "Административный отдел", email: "novikova@corp.ru" },
 ];
 
 const statusLabel: Record<Status, string> = { new: "Новое", progress: "В работе", done: "Выполнено", overdue: "Просрочено" };
@@ -129,13 +103,33 @@ type ModalMode = "create" | "edit";
 interface TaskFormState {
   title: string;
   description: string;
-  responsible: string;
+  responsible: string[];
   deadline: string;
   priority: Priority;
   assignedBy: string;
 }
 
-const emptyForm: TaskFormState = { title: "", description: "", responsible: "", deadline: "", priority: "medium", assignedBy: "Директор Петров В.И." };
+const emptyForm: TaskFormState = { title: "", description: "", responsible: [], deadline: "", priority: "medium", assignedBy: "Директор Петров В.И." };
+
+// Avatar group for multiple responsibles
+function AvatarGroup({ names, max = 3 }: { names: string[]; max?: number }) {
+  const shown = names.slice(0, max);
+  const rest = names.length - max;
+  return (
+    <div className="flex items-center -space-x-1.5">
+      {shown.map((name, i) => (
+        <div key={i} title={name} className="w-6 h-6 rounded-full bg-[hsl(221,45%,18%)] border-2 border-white flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0">
+          {name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+        </div>
+      ))}
+      {rest > 0 && (
+        <div className="w-6 h-6 rounded-full bg-[hsl(220,15%,75%)] border-2 border-white flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0">
+          +{rest}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Index() {
   const [section, setSection] = useState<Section>("orders");
@@ -145,14 +139,12 @@ export default function Index() {
   const [newComment, setNewComment] = useState("");
   const [filterStatus, setFilterStatus] = useState<Status | "all">("all");
 
-  // Task modal
   const [taskModal, setTaskModal] = useState<{ open: boolean; mode: ModalMode; editId?: number }>({ open: false, mode: "create" });
   const [taskForm, setTaskForm] = useState<TaskFormState>(emptyForm);
 
-  // Employee panel
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [reassignModal, setReassignModal] = useState<{ open: boolean; taskId?: number }>({ open: false });
-  const [reassignTo, setReassignTo] = useState("");
+  const [reassignSelected, setReassignSelected] = useState<string[]>([]);
 
   const orderTasks = tasks.filter((t) => t.section === "order");
   const reportTasks = tasks.filter((t) => t.section === "report");
@@ -167,7 +159,17 @@ export default function Index() {
     overdue: tasks.filter((t) => t.status === "overdue").length,
   };
 
-  const employeeTasks = (emp: Employee) => tasks.filter((t) => t.responsible === emp.shortName);
+  const employeeTasks = (emp: Employee) => tasks.filter((t) => t.responsible.includes(emp.shortName));
+
+  // Toggle responsible in form
+  const toggleFormResponsible = (shortName: string) => {
+    setTaskForm((prev) => ({
+      ...prev,
+      responsible: prev.responsible.includes(shortName)
+        ? prev.responsible.filter((r) => r !== shortName)
+        : [...prev.responsible, shortName],
+    }));
+  };
 
   const openCreate = () => {
     setTaskForm({ ...emptyForm });
@@ -178,7 +180,7 @@ export default function Index() {
     setTaskForm({
       title: task.title,
       description: task.description,
-      responsible: task.responsible,
+      responsible: [...task.responsible],
       deadline: task.deadline,
       priority: task.priority,
       assignedBy: task.assignedBy,
@@ -187,8 +189,7 @@ export default function Index() {
   };
 
   const saveTask = () => {
-    if (!taskForm.title || !taskForm.responsible || !taskForm.deadline) return;
-
+    if (!taskForm.title || taskForm.responsible.length === 0 || !taskForm.deadline) return;
     if (taskModal.mode === "edit" && taskModal.editId !== undefined) {
       const updated = tasks.map((t) =>
         t.id === taskModal.editId
@@ -239,14 +240,22 @@ export default function Index() {
   };
 
   const openReassign = (taskId: number) => {
-    setReassignTo("");
+    const task = tasks.find((t) => t.id === taskId);
+    setReassignSelected(task ? [...task.responsible] : []);
     setReassignModal({ open: true, taskId });
   };
 
+  const toggleReassign = (shortName: string) => {
+    setReassignSelected((prev) =>
+      prev.includes(shortName) ? prev.filter((r) => r !== shortName) : [...prev, shortName]
+    );
+  };
+
   const confirmReassign = () => {
-    if (!reassignTo || !reassignModal.taskId) return;
-    const updated = tasks.map((t) => t.id === reassignModal.taskId ? { ...t, responsible: reassignTo } : t);
+    if (reassignSelected.length === 0 || !reassignModal.taskId) return;
+    const updated = tasks.map((t) => t.id === reassignModal.taskId ? { ...t, responsible: reassignSelected } : t);
     setTasks(updated);
+    if (selectedTask?.id === reassignModal.taskId) setSelectedTask({ ...selectedTask, responsible: reassignSelected });
     setReassignModal({ open: false });
   };
 
@@ -277,10 +286,7 @@ export default function Index() {
           ))}
         </nav>
         <div className="px-3 py-4 border-t border-[hsl(221,40%,22%)]">
-          <div className="nav-item nav-item-inactive">
-            <Icon name="Settings" size={16} />
-            Настройки
-          </div>
+          <div className="nav-item nav-item-inactive"><Icon name="Settings" size={16} />Настройки</div>
           <div className="nav-item nav-item-inactive">
             <div className="w-6 h-6 rounded-full bg-[hsl(42,80%,50%)] flex items-center justify-center text-xs font-bold text-[hsl(221,45%,10%)]">П</div>
             Петров В.И.
@@ -290,7 +296,6 @@ export default function Index() {
 
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        {/* Header */}
         <header className="bg-white border-b border-[hsl(220,20%,87%)] px-8 py-4 flex items-center justify-between flex-shrink-0">
           <div>
             <h1 className="text-xl font-semibold text-[hsl(220,30%,12%)]">
@@ -315,15 +320,13 @@ export default function Index() {
                   <option value="overdue">Просроченные</option>
                 </select>
                 <button onClick={openCreate} className="btn-gold flex items-center gap-2">
-                  <Icon name="Plus" size={15} />
-                  Создать
+                  <Icon name="Plus" size={15} />Создать
                 </button>
               </>
             )}
           </div>
         </header>
 
-        {/* Stats bar */}
         {(section === "orders" || section === "reports") && (
           <div className="bg-white border-b border-[hsl(220,20%,87%)] px-8 py-3 flex gap-6 flex-shrink-0">
             {[
@@ -341,32 +344,38 @@ export default function Index() {
           </div>
         )}
 
-        {/* Content */}
         <div className="flex-1 overflow-hidden flex">
-          {/* Left panel */}
+          {/* Left list */}
           <div className={`${(selectedTask || selectedEmployee) ? "w-2/5" : "w-full"} overflow-y-auto transition-all duration-300`}>
 
-            {/* ORDERS */}
             {section === "orders" && (
               <div className="p-6 space-y-3 animate-fade-in">
                 {filteredOrders.length === 0 && <EmptyState />}
                 {filteredOrders.map((task) => (
-                  <TaskCard key={task.id} task={task} onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }} isSelected={selectedTask?.id === task.id} onEdit={() => openEdit(task)} onDelete={() => deleteTask(task.id)} />
+                  <TaskCard key={task.id} task={task}
+                    onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }}
+                    isSelected={selectedTask?.id === task.id}
+                    onEdit={() => openEdit(task)}
+                    onDelete={() => deleteTask(task.id)}
+                  />
                 ))}
               </div>
             )}
 
-            {/* REPORTS */}
             {section === "reports" && (
               <div className="p-6 space-y-3 animate-fade-in">
                 {filteredReports.length === 0 && <EmptyState />}
                 {filteredReports.map((task) => (
-                  <TaskCard key={task.id} task={task} onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }} isSelected={selectedTask?.id === task.id} onEdit={() => openEdit(task)} onDelete={() => deleteTask(task.id)} />
+                  <TaskCard key={task.id} task={task}
+                    onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }}
+                    isSelected={selectedTask?.id === task.id}
+                    onEdit={() => openEdit(task)}
+                    onDelete={() => deleteTask(task.id)}
+                  />
                 ))}
               </div>
             )}
 
-            {/* EMPLOYEES */}
             {section === "employees" && (
               <div className="p-6 space-y-3 animate-fade-in">
                 {employees.map((emp) => {
@@ -374,7 +383,8 @@ export default function Index() {
                   const done = empTasks.filter((t) => t.status === "done").length;
                   const overdue = empTasks.filter((t) => t.status === "overdue").length;
                   return (
-                    <div key={emp.id} onClick={() => { setSelectedEmployee(emp); setSelectedTask(null); }} className={`card-corp p-5 cursor-pointer transition-all duration-150 ${selectedEmployee?.id === emp.id ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
+                    <div key={emp.id} onClick={() => { setSelectedEmployee(emp); setSelectedTask(null); }}
+                      className={`card-corp p-5 cursor-pointer transition-all duration-150 ${selectedEmployee?.id === emp.id ? "border-[hsl(221,45%,30%)] ring-1 ring-[hsl(221,45%,30%)]" : ""}`}>
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-4">
                           <div className="w-10 h-10 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0">
@@ -396,8 +406,7 @@ export default function Index() {
                         </div>
                       </div>
                       <div className="mt-3 pt-3 border-t border-[hsl(220,20%,93%)] flex items-center gap-1.5 text-xs text-[hsl(220,15%,55%)]">
-                        <Icon name="Mail" size={12} />
-                        {emp.email}
+                        <Icon name="Mail" size={12} />{emp.email}
                       </div>
                     </div>
                   );
@@ -406,7 +415,7 @@ export default function Index() {
             )}
           </div>
 
-          {/* TASK DETAIL PANEL */}
+          {/* TASK DETAIL */}
           {selectedTask && (
             <div className="flex-1 border-l border-[hsl(220,20%,87%)] bg-white overflow-y-auto animate-slide-in">
               <div className="sticky top-0 bg-white border-b border-[hsl(220,20%,87%)] px-6 py-4 flex items-center justify-between z-10">
@@ -415,13 +424,16 @@ export default function Index() {
                   <div className="font-semibold text-[hsl(220,30%,12%)] mt-0.5 text-sm leading-snug max-w-xs">{selectedTask.title}</div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <button onClick={() => openEdit(selectedTask)} title="Редактировать" className="p-1.5 rounded-sm hover:bg-[hsl(42,80%,93%)] text-[hsl(42,70%,40%)] transition-colors">
+                  <button onClick={() => openEdit(selectedTask)} className="p-1.5 rounded-sm hover:bg-[hsl(42,80%,93%)] text-[hsl(42,70%,40%)] transition-colors" title="Редактировать">
                     <Icon name="Pencil" size={15} />
                   </button>
-                  <button onClick={() => deleteTask(selectedTask.id)} title="Удалить" className="p-1.5 rounded-sm hover:bg-red-50 text-red-400 transition-colors">
+                  <button onClick={() => openReassign(selectedTask.id)} className="p-1.5 rounded-sm hover:bg-blue-50 text-blue-400 transition-colors" title="Перераспределить">
+                    <Icon name="ArrowRightLeft" size={15} />
+                  </button>
+                  <button onClick={() => deleteTask(selectedTask.id)} className="p-1.5 rounded-sm hover:bg-red-50 text-red-400 transition-colors" title="Удалить">
                     <Icon name="Trash2" size={15} />
                   </button>
-                  <button onClick={() => setSelectedTask(null)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)] transition-colors ml-1">
+                  <button onClick={() => setSelectedTask(null)} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)] ml-1">
                     <Icon name="X" size={16} />
                   </button>
                 </div>
@@ -438,21 +450,54 @@ export default function Index() {
 
                 <div className="flex gap-2 flex-wrap">
                   {(["new", "progress", "done"] as Status[]).map((s) => (
-                    <button key={s} onClick={() => changeStatus(selectedTask.id, s)} className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${selectedTask.status === s ? "bg-[hsl(221,45%,18%)] text-white border-[hsl(221,45%,18%)]" : "border-[hsl(220,20%,87%)] text-[hsl(220,15%,50%)] hover:border-[hsl(221,45%,30%)]"}`}>
+                    <button key={s} onClick={() => changeStatus(selectedTask.id, s)}
+                      className={`text-xs px-3 py-1.5 rounded-sm border transition-colors ${selectedTask.status === s ? "bg-[hsl(221,45%,18%)] text-white border-[hsl(221,45%,18%)]" : "border-[hsl(220,20%,87%)] text-[hsl(220,15%,50%)] hover:border-[hsl(221,45%,30%)]"}`}>
                       {statusLabel[s]}
                     </button>
                   ))}
                 </div>
 
+                {/* Responsible */}
+                <div>
+                  <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-2.5 flex items-center gap-2">
+                    <Icon name="Users" size={12} />
+                    Ответственные ({selectedTask.responsible.length})
+                  </div>
+                  <div className="space-y-2">
+                    {selectedTask.responsible.map((name) => {
+                      const emp = INITIAL_EMPLOYEES.find((e) => e.shortName === name);
+                      return (
+                        <div key={name} className="flex items-center gap-2.5 py-1.5">
+                          <div className="w-7 h-7 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                            {name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                          </div>
+                          <div>
+                            <div className="text-sm font-medium text-[hsl(220,30%,12%)]">{name}</div>
+                            {emp && <div className="text-xs text-[hsl(220,15%,55%)]">{emp.position}</div>}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button onClick={() => openReassign(selectedTask.id)} className="mt-2 text-xs flex items-center gap-1.5 text-[hsl(221,45%,40%)] hover:text-[hsl(221,45%,25%)] transition-colors">
+                    <Icon name="ArrowRightLeft" size={12} />
+                    Изменить состав исполнителей
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 gap-0">
-                  <InfoRow icon="User" label="Ответственный" value={selectedTask.responsible} />
                   <InfoRow icon="UserCheck" label="Назначил" value={selectedTask.assignedBy} />
-                  <InfoRow icon="Calendar" label="Срок исполнения" value={new Date(selectedTask.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })} valueClass={isOverdue(selectedTask.deadline) && selectedTask.status !== "done" ? "text-red-600 font-medium" : ""} />
+                  <InfoRow icon="Calendar" label="Срок исполнения"
+                    value={new Date(selectedTask.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "long", year: "numeric" })}
+                    valueClass={isOverdue(selectedTask.deadline) && selectedTask.status !== "done" ? "text-red-600 font-medium" : ""}
+                  />
                 </div>
 
                 <div>
                   <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-2">Описание</div>
-                  <div className="text-sm text-[hsl(220,30%,20%)] leading-relaxed bg-[hsl(220,15%,97%)] rounded-sm p-3">{selectedTask.description || <span className="italic text-[hsl(220,15%,60%)]">Не указано</span>}</div>
+                  <div className="text-sm text-[hsl(220,30%,20%)] leading-relaxed bg-[hsl(220,15%,97%)] rounded-sm p-3">
+                    {selectedTask.description || <span className="italic text-[hsl(220,15%,60%)]">Не указано</span>}
+                  </div>
                 </div>
 
                 <div>
@@ -473,10 +518,10 @@ export default function Index() {
                     {selectedTask.comments.length === 0 && <p className="text-xs text-[hsl(220,15%,60%)] italic">Комментариев пока нет</p>}
                   </div>
                   <div className="mt-3 flex gap-2">
-                    <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()} placeholder="Добавить комментарий..." className="flex-1 text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] placeholder:text-[hsl(220,15%,65%)]" />
+                    <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()}
+                      placeholder="Добавить комментарий..." className="flex-1 text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] placeholder:text-[hsl(220,15%,65%)]" />
                     <button onClick={addComment} className="btn-primary flex items-center gap-1.5">
-                      <Icon name="Send" size={13} />
-                      Отправить
+                      <Icon name="Send" size={13} />Отправить
                     </button>
                   </div>
                 </div>
@@ -484,7 +529,7 @@ export default function Index() {
             </div>
           )}
 
-          {/* EMPLOYEE DETAIL PANEL */}
+          {/* EMPLOYEE DETAIL */}
           {selectedEmployee && section === "employees" && (
             <div className="flex-1 border-l border-[hsl(220,20%,87%)] bg-white overflow-y-auto animate-slide-in">
               <div className="sticky top-0 bg-white border-b border-[hsl(220,20%,87%)] px-6 py-4 flex items-center justify-between z-10">
@@ -510,8 +555,9 @@ export default function Index() {
                 </div>
 
                 <div>
-                  <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-3 flex items-center justify-between">
-                    <span className="flex items-center gap-2"><Icon name="ClipboardList" size={12} />Задачи сотрудника ({employeeTasks(selectedEmployee).length})</span>
+                  <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <Icon name="ClipboardList" size={12} />
+                    Задачи сотрудника ({employeeTasks(selectedEmployee).length})
                   </div>
 
                   {employeeTasks(selectedEmployee).length === 0 && (
@@ -531,14 +577,20 @@ export default function Index() {
                               <span className={`status-badge ${statusClass[task.status]}`}>{statusLabel[task.status]}</span>
                             </div>
                             <div className="text-sm font-medium text-[hsl(220,30%,12%)] leading-snug">{task.title}</div>
+                            {task.responsible.length > 1 && (
+                              <div className="flex items-center gap-1.5 mt-1.5">
+                                <AvatarGroup names={task.responsible} />
+                                <span className="text-xs text-[hsl(220,15%,55%)]">{task.responsible.length} исполнителя</span>
+                              </div>
+                            )}
                             <div className={`text-xs mt-1.5 flex items-center gap-1 ${isOverdue(task.deadline) && task.status !== "done" ? "text-red-500" : "text-[hsl(220,15%,55%)]"}`}>
                               <Icon name="Calendar" size={11} />
                               {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short", year: "numeric" })}
                             </div>
                           </div>
-                          <button onClick={() => openReassign(task.id)} title="Перераспределить задачу" className="flex-shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm border border-[hsl(220,20%,87%)] text-[hsl(220,15%,45%)] hover:border-[hsl(42,80%,50%)] hover:text-[hsl(42,60%,35%)] hover:bg-[hsl(42,80%,96%)] transition-all">
+                          <button onClick={() => openReassign(task.id)} className="flex-shrink-0 flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-sm border border-[hsl(220,20%,87%)] text-[hsl(220,15%,45%)] hover:border-[hsl(42,80%,50%)] hover:text-[hsl(42,60%,35%)] hover:bg-[hsl(42,80%,96%)] transition-all">
                             <Icon name="ArrowRightLeft" size={12} />
-                            Передать
+                            Изменить
                           </button>
                         </div>
                       </div>
@@ -551,7 +603,7 @@ export default function Index() {
         </div>
       </main>
 
-      {/* TASK MODAL (Create / Edit) */}
+      {/* TASK MODAL */}
       {taskModal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-md shadow-2xl w-full max-w-lg mx-4 animate-fade-in">
@@ -568,48 +620,81 @@ export default function Index() {
             <div className="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
               <div>
                 <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Заголовок *</label>
-                <input type="text" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })} placeholder="Введите название..." className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+                <input type="text" value={taskForm.title} onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
+                  placeholder="Введите название..." className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
               </div>
 
               <div>
                 <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Описание</label>
-                <textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })} placeholder="Подробное описание..." rows={3} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] resize-none" />
+                <textarea value={taskForm.description} onChange={(e) => setTaskForm({ ...taskForm, description: e.target.value })}
+                  placeholder="Подробное описание..." rows={3} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)] resize-none" />
               </div>
 
               <div>
                 <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Назначил</label>
-                <input type="text" value={taskForm.assignedBy} onChange={(e) => setTaskForm({ ...taskForm, assignedBy: e.target.value })} placeholder="Кто назначает задачу..." className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+                <input type="text" value={taskForm.assignedBy} onChange={(e) => setTaskForm({ ...taskForm, assignedBy: e.target.value })}
+                  placeholder="Кто назначает задачу..." className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+              </div>
+
+              {/* Multi-select responsible */}
+              <div>
+                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-2">
+                  Ответственные * {taskForm.responsible.length > 0 && <span className="text-[hsl(221,45%,40%)]">({taskForm.responsible.length} выбрано)</span>}
+                </label>
+                <div className="space-y-1.5 border border-[hsl(220,20%,87%)] rounded-sm p-2 max-h-40 overflow-y-auto">
+                  {INITIAL_EMPLOYEES.map((emp) => {
+                    const checked = taskForm.responsible.includes(emp.shortName);
+                    return (
+                      <label key={emp.id} className={`flex items-center gap-2.5 p-2 rounded-sm cursor-pointer transition-colors ${checked ? "bg-[hsl(221,45%,96%)]" : "hover:bg-[hsl(220,15%,97%)]"}`}>
+                        <input type="checkbox" checked={checked} onChange={() => toggleFormResponsible(emp.shortName)} className="accent-[hsl(221,45%,18%)] w-3.5 h-3.5" />
+                        <div className="w-6 h-6 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white text-[9px] font-semibold flex-shrink-0">
+                          {emp.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium text-[hsl(220,30%,12%)]">{emp.name}</div>
+                          <div className="text-xs text-[hsl(220,15%,55%)]">{emp.position}</div>
+                        </div>
+                        {checked && <Icon name="Check" size={13} className="text-[hsl(221,45%,35%)] flex-shrink-0" />}
+                      </label>
+                    );
+                  })}
+                </div>
+                {taskForm.responsible.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {taskForm.responsible.map((name) => (
+                      <span key={name} className="inline-flex items-center gap-1 text-xs bg-[hsl(221,45%,15%)] text-white px-2 py-0.5 rounded-sm">
+                        {name}
+                        <button onClick={() => toggleFormResponsible(name)} className="hover:text-red-300 transition-colors ml-0.5">
+                          <Icon name="X" size={10} />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Ответственный *</label>
-                  <select value={taskForm.responsible} onChange={(e) => setTaskForm({ ...taskForm, responsible: e.target.value })} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]">
-                    <option value="">Выбрать...</option>
-                    {INITIAL_EMPLOYEES.map((e) => (
-                      <option key={e.id} value={e.shortName}>{e.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
                   <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Приоритет</label>
-                  <select value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value as Priority })} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]">
+                  <select value={taskForm.priority} onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value as Priority })}
+                    className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 bg-white focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]">
                     <option value="high">Высокий</option>
                     <option value="medium">Средний</option>
                     <option value="low">Низкий</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Срок исполнения *</label>
-                <input type="date" value={taskForm.deadline} onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })} className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+                <div>
+                  <label className="text-xs font-medium text-[hsl(220,15%,40%)] block mb-1.5">Срок исполнения *</label>
+                  <input type="date" value={taskForm.deadline} onChange={(e) => setTaskForm({ ...taskForm, deadline: e.target.value })}
+                    className="w-full text-sm border border-[hsl(220,20%,87%)] rounded-sm px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[hsl(221,45%,18%)]" />
+                </div>
               </div>
             </div>
 
             <div className="px-6 py-4 border-t border-[hsl(220,20%,87%)] flex justify-end gap-2">
               <button onClick={() => setTaskModal({ open: false, mode: "create" })} className="btn-ghost">Отмена</button>
-              <button onClick={saveTask} className="btn-gold flex items-center gap-2">
+              <button onClick={saveTask} disabled={!taskForm.title || taskForm.responsible.length === 0 || !taskForm.deadline}
+                className="btn-gold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
                 <Icon name={taskModal.mode === "edit" ? "Save" : "Plus"} size={14} />
                 {taskModal.mode === "edit" ? "Сохранить" : "Создать"}
               </button>
@@ -618,41 +703,56 @@ export default function Index() {
         </div>
       )}
 
-      {/* REASSIGN MODAL */}
+      {/* REASSIGN MODAL — multi-select */}
       {reassignModal.open && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 backdrop-blur-sm">
           <div className="bg-white rounded-md shadow-2xl w-full max-w-sm mx-4 animate-fade-in">
             <div className="px-6 py-5 border-b border-[hsl(220,20%,87%)] flex items-center justify-between">
               <div>
-                <h2 className="font-semibold text-[hsl(220,30%,12%)]">Передать задачу</h2>
-                <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">Выберите нового ответственного</p>
+                <h2 className="font-semibold text-[hsl(220,30%,12%)]">Исполнители задачи</h2>
+                <p className="text-xs text-[hsl(220,15%,50%)] mt-0.5">Выберите одного или нескольких</p>
               </div>
               <button onClick={() => setReassignModal({ open: false })} className="p-1.5 rounded-sm hover:bg-[hsl(220,15%,93%)] text-[hsl(220,15%,50%)]">
                 <Icon name="X" size={16} />
               </button>
             </div>
 
-            <div className="px-6 py-5 space-y-2">
-              {INITIAL_EMPLOYEES.map((emp) => (
-                <label key={emp.id} className={`flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-all ${reassignTo === emp.shortName ? "border-[hsl(221,45%,30%)] bg-[hsl(221,45%,97%)]" : "border-[hsl(220,20%,87%)] hover:border-[hsl(220,20%,75%)]"}`}>
-                  <input type="radio" name="reassign" value={emp.shortName} checked={reassignTo === emp.shortName} onChange={() => setReassignTo(emp.shortName)} className="accent-[hsl(221,45%,18%)]" />
-                  <div className="w-7 h-7 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
-                    {emp.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-[hsl(220,30%,12%)]">{emp.name}</div>
-                    <div className="text-xs text-[hsl(220,15%,50%)]">{emp.position}</div>
-                  </div>
-                </label>
-              ))}
+            <div className="px-6 py-4 space-y-1.5">
+              {INITIAL_EMPLOYEES.map((emp) => {
+                const checked = reassignSelected.includes(emp.shortName);
+                return (
+                  <label key={emp.id} className={`flex items-center gap-3 p-3 rounded-sm border cursor-pointer transition-all ${checked ? "border-[hsl(221,45%,30%)] bg-[hsl(221,45%,97%)]" : "border-[hsl(220,20%,87%)] hover:border-[hsl(220,20%,75%)]"}`}>
+                    <input type="checkbox" checked={checked} onChange={() => toggleReassign(emp.shortName)} className="accent-[hsl(221,45%,18%)] w-3.5 h-3.5" />
+                    <div className="w-7 h-7 rounded-full bg-[hsl(221,45%,18%)] flex items-center justify-center text-white text-xs font-semibold flex-shrink-0">
+                      {emp.name.split(" ").map((n) => n[0]).slice(0, 2).join("")}
+                    </div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-[hsl(220,30%,12%)]">{emp.name}</div>
+                      <div className="text-xs text-[hsl(220,15%,50%)]">{emp.position}</div>
+                    </div>
+                    {checked && <Icon name="Check" size={14} className="text-[hsl(221,45%,35%)] flex-shrink-0" />}
+                  </label>
+                );
+              })}
             </div>
 
-            <div className="px-6 py-4 border-t border-[hsl(220,20%,87%)] flex justify-end gap-2">
-              <button onClick={() => setReassignModal({ open: false })} className="btn-ghost">Отмена</button>
-              <button onClick={confirmReassign} disabled={!reassignTo} className="btn-gold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
-                <Icon name="ArrowRightLeft" size={14} />
-                Передать
-              </button>
+            {reassignSelected.length > 0 && (
+              <div className="px-6 pb-2 flex flex-wrap gap-1.5">
+                {reassignSelected.map((name) => (
+                  <span key={name} className="text-xs bg-[hsl(221,45%,15%)] text-white px-2 py-0.5 rounded-sm">{name}</span>
+                ))}
+              </div>
+            )}
+
+            <div className="px-6 py-4 border-t border-[hsl(220,20%,87%)] flex justify-between items-center">
+              <span className="text-xs text-[hsl(220,15%,55%)]">{reassignSelected.length > 0 ? `Выбрано: ${reassignSelected.length}` : "Никто не выбран"}</span>
+              <div className="flex gap-2">
+                <button onClick={() => setReassignModal({ open: false })} className="btn-ghost">Отмена</button>
+                <button onClick={confirmReassign} disabled={reassignSelected.length === 0}
+                  className="btn-gold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed">
+                  <Icon name="Check" size={14} />Применить
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -672,13 +772,22 @@ function TaskCard({ task, onClick, isSelected, onEdit, onDelete }: { task: Task;
             <span className={`status-badge ${statusClass[task.status]}`}>{statusLabel[task.status]}</span>
           </div>
           <div className="font-medium text-sm text-[hsl(220,30%,12%)] leading-snug line-clamp-2">{task.title}</div>
-          <div className="flex items-center gap-3 mt-2 text-xs text-[hsl(220,15%,55%)]">
-            <span className="flex items-center gap-1"><Icon name="User" size={11} />{task.responsible}</span>
-            <span className={`flex items-center gap-1 ${overdue ? "text-red-600 font-medium" : ""}`}>
+          <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-1.5">
+              <AvatarGroup names={task.responsible} max={3} />
+              <span className="text-xs text-[hsl(220,15%,55%)]">
+                {task.responsible.length === 1 ? task.responsible[0] : `${task.responsible.length} исполнителя`}
+              </span>
+            </div>
+            <span className={`text-xs flex items-center gap-1 ${overdue ? "text-red-600 font-medium" : "text-[hsl(220,15%,55%)]"}`}>
               <Icon name="Calendar" size={11} />
               {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
             </span>
-            {task.comments.length > 0 && <span className="flex items-center gap-1"><Icon name="MessageSquare" size={11} />{task.comments.length}</span>}
+            {task.comments.length > 0 && (
+              <span className="text-xs flex items-center gap-1 text-[hsl(220,15%,55%)]">
+                <Icon name="MessageSquare" size={11} />{task.comments.length}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
