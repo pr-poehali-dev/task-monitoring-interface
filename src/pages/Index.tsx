@@ -107,13 +107,20 @@ export default function Index() {
 
   const loadData = useCallback(async () => {
     setLoading(true);
-    const [tasksRes, empRes] = await Promise.all([
-      fetch(API.tasks).then((r) => r.json()),
-      fetch(API.employees).then((r) => r.json()),
-    ]);
-    setTasks(tasksRes.filter((t: Task) => t.title !== "__deleted__"));
-    setEmployees(empRes);
-    setLoading(false);
+    try {
+      const [tasksRes, empRes] = await Promise.all([
+        fetch(API.tasks).then((r) => r.json()),
+        fetch(API.employees).then((r) => r.json()),
+      ]);
+      setTasks(Array.isArray(tasksRes) ? tasksRes.filter((t: Task) => t.title !== "__deleted__") : []);
+      setEmployees(Array.isArray(empRes) ? empRes : []);
+    } catch (e) {
+      console.error("loadData error", e);
+      setTasks([]);
+      setEmployees([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { loadData(); }, [loadData]);
