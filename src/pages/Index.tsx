@@ -1,46 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
+import { store, type Task, type Employee, type Comment, type Status, type Priority } from "@/lib/localStore";
 
-const API = {
-  employees: "https://functions.poehali.dev/5ef255bd-25c0-4b58-ace7-574f3f32dd6c",
-  tasks: "https://functions.poehali.dev/0f87aeaa-6ca6-4364-b0c8-f01a8dc6fc12",
-  comments: "https://functions.poehali.dev/ebb0474f-ae16-42df-bfa5-4158718d7d7e",
-};
-
-type Status = "new" | "progress" | "done" | "overdue";
-type Priority = "high" | "medium" | "low";
 type Section = "orders" | "employees" | "reports";
-
-interface Comment {
-  id: number;
-  author: string;
-  text: string;
-  date: string;
-}
-
-interface Task {
-  id: number;
-  number: string;
-  title: string;
-  description: string;
-  responsible: string[];
-  assignedBy: string;
-  deadline: string;
-  status: Status;
-  priority: Priority;
-  comments: Comment[];
-  section: "order" | "report";
-  linkedOrderId?: number;
-}
-
-interface Employee {
-  id: number;
-  name: string;
-  shortName: string;
-  position: string;
-  department: string;
-  email: string;
-}
 
 
 
@@ -105,25 +67,14 @@ export default function Index() {
   const [deleteEmpModal, setDeleteEmpModal] = useState<Employee | null>(null);
   const [empForm, setEmpForm] = useState({ name: "", position: "", department: "", email: "" });
 
-  const loadData = useCallback(async () => {
+  const loadData = () => {
     setLoading(true);
-    try {
-      const [tasksRes, empRes] = await Promise.all([
-        fetch(API.tasks).then((r) => r.json()),
-        fetch(API.employees).then((r) => r.json()),
-      ]);
-      setTasks(Array.isArray(tasksRes) ? tasksRes.filter((t: Task) => t.title !== "__deleted__") : []);
-      setEmployees(Array.isArray(empRes) ? empRes : []);
-    } catch (e) {
-      console.error("loadData error", e);
-      setTasks([]);
-      setEmployees([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    setTasks(store.getTasks());
+    setEmployees(store.getEmployees());
+    setLoading(false);
+  };
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => { loadData(); }, []);
 
   const orderTasks = tasks.filter((t) => t.section === "order");
   const reportTasks = tasks.filter((t) => t.section === "report");
@@ -168,47 +119,37 @@ export default function Index() {
     setTaskModal({ open: true, mode: "edit", editId: task.id });
   };
 
-  const saveTask = async () => {
+  const saveTask = () => {
     if (!taskForm.title || taskForm.responsible.length === 0 || !taskForm.deadline) return;
     const isReport = section === "reports" || (taskModal.mode === "edit" && tasks.find((t) => t.id === taskModal.editId)?.section === "report");
     if (taskModal.mode === "edit" && taskModal.editId !== undefined) {
-      await fetch(`${API.tasks}/${taskModal.editId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: taskForm.title, description: taskForm.description,
-          responsible: taskForm.responsible, deadline: taskForm.deadline,
-          priority: taskForm.priority, assignedBy: taskForm.assignedBy,
-          linkedOrderId: taskForm.linkedOrderId,
-        }),
+      store.updateTask(taskModal.editId, {
+        title: taskForm.title, description: taskForm.description,
+        responsible: taskForm.responsible, deadline: taskForm.deadline,
+        priority: taskForm.priority, assignedBy: taskForm.assignedBy,
+        linkedOrderId: taskForm.linkedOrderId,
       });
     } else {
       const number = isReport
         ? `ОТ-2026-${String(reportTasks.length + 1).padStart(3, "0")}`
         : `УК-2026-${String(orderTasks.length + 1).padStart(3, "0")}`;
-      await fetch(API.tasks, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          number, title: taskForm.title, description: taskForm.description,
-          responsible: taskForm.responsible, assignedBy: taskForm.assignedBy,
-          deadline: taskForm.deadline, priority: taskForm.priority,
-          section: isReport ? "report" : "order",
-          linkedOrderId: isReport ? taskForm.linkedOrderId : undefined,
-        }),
+      store.createTask({
+        number, title: taskForm.title, description: taskForm.description,
+        responsible: taskForm.responsible, assignedBy: taskForm.assignedBy,
+        deadline: taskForm.deadline, priority: taskForm.priority,
+        section: isReport ? "report" : "order",
+        linkedOrderId: isReport ? taskForm.linkedOrderId : undefined,
       });
     }
     setTaskModal({ open: false, mode: "create" });
-    await loadData();
-    if (taskModal.mode === "edit" && taskModal.editId) {
-      setSelectedTask(null);
-    }
+    if (taskModal.mode === "edit" && taskModal.editId) setSelectedTask(null);
+    loadData();
   };
 
-  const deleteTask = async (taskId: number) => {
-    await fetch(`${API.tasks}/${taskId}`, { method: "DELETE" });
+  const deleteTask = (taskId: number) => {
+    store.deleteTask(taskId);
     if (selectedTask?.id === taskId) setSelectedTask(null);
-    await loadData();
+    loadData();
   };
 
   const makeShortName = (fullName: string) => {
@@ -217,51 +158,39 @@ export default function Index() {
     return `${parts[0]} ${parts[1][0]}.${parts[2] ? parts[2][0] + "." : ""}`;
   };
 
-  const addEmployee = async () => {
+  const addEmployee = () => {
     if (!empForm.name || !empForm.position || !empForm.department) return;
     const shortName = makeShortName(empForm.name);
-    await fetch(API.employees, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: empForm.name.trim(), shortName, position: empForm.position.trim(), department: empForm.department.trim(), email: empForm.email.trim() }),
-    });
+    store.createEmployee({ name: empForm.name.trim(), shortName, position: empForm.position.trim(), department: empForm.department.trim(), email: empForm.email.trim() });
     setEmpForm({ name: "", position: "", department: "", email: "" });
     setEmpModal(false);
-    await loadData();
+    loadData();
   };
 
-  const confirmDeleteEmployee = async () => {
+  const confirmDeleteEmployee = () => {
     if (!deleteEmpModal) return;
-    await fetch(`${API.employees}/${deleteEmpModal.id}`, { method: "DELETE" });
+    store.deleteEmployee(deleteEmpModal.id);
     if (selectedEmployee?.id === deleteEmpModal.id) setSelectedEmployee(null);
     setDeleteEmpModal(null);
-    await loadData();
+    loadData();
   };
 
-  const addComment = async () => {
+  const addComment = () => {
     if (!newComment.trim() || !selectedTask) return;
     const date = new Date().toLocaleDateString("ru-RU");
-    const res = await fetch(API.comments, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ taskId: selectedTask.id, author: "Вы", text: newComment.trim(), date }),
-    });
-    const comment: Comment = await res.json();
+    const comment = store.addComment(selectedTask.id, "Вы", newComment.trim(), date);
+    if (!comment) return;
     const updated = tasks.map((t) => t.id === selectedTask.id ? { ...t, comments: [...t.comments, comment] } : t);
     setTasks(updated);
     setSelectedTask({ ...selectedTask, comments: [...selectedTask.comments, comment] });
     setNewComment("");
   };
 
-  const changeStatus = async (taskId: number, status: Status) => {
+  const changeStatus = (taskId: number, status: Status) => {
+    store.updateTask(taskId, { status });
     const updated = tasks.map((t) => (t.id === taskId ? { ...t, status } : t));
     setTasks(updated);
     if (selectedTask?.id === taskId) setSelectedTask({ ...selectedTask, status });
-    await fetch(`${API.tasks}/${taskId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
   };
 
   const openReassign = (taskId: number) => {
@@ -276,19 +205,9 @@ export default function Index() {
     );
   };
 
-  const confirmReassign = async () => {
+  const confirmReassign = () => {
     if (reassignSelected.length === 0 || !reassignModal.taskId) return;
-    const task = tasks.find((t) => t.id === reassignModal.taskId);
-    if (!task) return;
-    await fetch(`${API.tasks}/${reassignModal.taskId}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        title: task.title, description: task.description, assignedBy: task.assignedBy,
-        deadline: task.deadline, priority: task.priority, linkedOrderId: task.linkedOrderId,
-        responsible: reassignSelected,
-      }),
-    });
+    store.updateTask(reassignModal.taskId, { responsible: reassignSelected });
     const updated = tasks.map((t) => t.id === reassignModal.taskId ? { ...t, responsible: reassignSelected } : t);
     setTasks(updated);
     if (selectedTask?.id === reassignModal.taskId) setSelectedTask({ ...selectedTask, responsible: reassignSelected });
