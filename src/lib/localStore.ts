@@ -1,42 +1,18 @@
-const KEYS = {
-  tasks: "korpus_tasks",
-  employees: "korpus_employees",
-  taskSeq: "korpus_task_seq",
-  empSeq: "korpus_emp_seq",
-  commentSeq: "korpus_comment_seq",
-};
-
-function get<T>(key: string, fallback: T): T {
-  try {
-    const v = localStorage.getItem(key);
-    return v ? JSON.parse(v) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function set(key: string, value: unknown) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function nextId(seqKey: string): number {
-  const id = get<number>(seqKey, 0) + 1;
-  set(seqKey, id);
-  return id;
-}
+import Dexie, { type Table } from "dexie";
 
 export type Status = "new" | "progress" | "done" | "overdue";
 export type Priority = "high" | "medium" | "low";
 
 export interface Comment {
-  id: number;
+  id?: number;
+  taskId: number;
   author: string;
   text: string;
   date: string;
 }
 
 export interface Task {
-  id: number;
+  id?: number;
   number: string;
   title: string;
   description: string;
@@ -45,13 +21,12 @@ export interface Task {
   deadline: string;
   status: Status;
   priority: Priority;
-  comments: Comment[];
   section: "order" | "report";
   linkedOrderId?: number;
 }
 
 export interface Employee {
-  id: number;
+  id?: number;
   name: string;
   shortName: string;
   position: string;
@@ -59,57 +34,100 @@ export interface Employee {
   email: string;
 }
 
+class AppDatabase extends Dexie {
+  tasks!: Table<Task, number>;
+  comments!: Table<Comment, number>;
+  employees!: Table<Employee, number>;
+
+  constructor() {
+    super("korpus_db");
+    this.version(1).stores({
+      tasks: "++id, status, priority, section, linkedOrderId",
+      comments: "++id, taskId",
+      employees: "++id, shortName",
+    });
+  }
+}
+
+export const db = new AppDatabase();
+
+async function migrateFromLocalStorage() {
+  const migrated = localStorage.getItem("korpus_idb_migrated");
+  if (migrated) return;
+
+  try {
+    const tasksRaw = localStorage.getItem("korpus_tasks");
+    const employeesRaw = localStorage.getItem("korpus_employees");
+
+    if (employeesRaw) {
+      const employees: (Employee & { id: number })[] = JSON.parse(employeesRaw);
+      for (const emp of employees) {
+        await db.employees.put(emp);
+      }
+    }
+
+    if (tasksRaw) {
+      const tasks: (Task & { id: number; comments: (Comment & { id: number })[] })[] =
+        JSON.parse(tasksRaw);
+      for (const task of tasks) {
+        const { comments, ...taskData } = task;
+        await db.tasks.put(taskData);
+        if (comments?.length) {
+          for (const c of comments) {
+            await db.comments.put({ ...c, taskId: task.id });
+          }
+        }
+      }
+    }
+
+    localStorage.setItem("korpus_idb_migrated", "1");
+  } catch {
+    // ignore migration errors
+  }
+}
+
+migrateFromLocalStorage();
+
 export const store = {
-  getTasks(): Task[] {
-    return get<Task[]>(KEYS.tasks, []);
+  async getTasks(): Promise<Task[]> {
+    return db.tasks.toArray();
   },
 
-  getEmployees(): Employee[] {
-    return get<Employee[]>(KEYS.employees, []);
+  async getEmployees(): Promise<Employee[]> {
+    return db.employees.toArray();
   },
 
-  createTask(data: Omit<Task, "id" | "status" | "comments">): Task {
-    const tasks = store.getTasks();
-    const task: Task = { ...data, id: nextId(KEYS.taskSeq), status: "new", comments: [] };
-    tasks.push(task);
-    set(KEYS.tasks, tasks);
-    return task;
+  async getComments(taskId: number): Promise<Comment[]> {
+    return db.comments.where("taskId").equals(taskId).toArray();
   },
 
-  updateTask(id: number, patch: Partial<Omit<Task, "id" | "comments">>): Task | null {
-    const tasks = store.getTasks();
-    const idx = tasks.findIndex((t) => t.id === id);
-    if (idx === -1) return null;
-    tasks[idx] = { ...tasks[idx], ...patch };
-    set(KEYS.tasks, tasks);
-    return tasks[idx];
+  async createTask(data: Omit<Task, "id">): Promise<Task> {
+    const id = await db.tasks.add({ ...data, status: "new" });
+    return { ...data, id, status: "new" };
   },
 
-  deleteTask(id: number) {
-    const tasks = store.getTasks().filter((t) => t.id !== id);
-    set(KEYS.tasks, tasks);
+  async updateTask(id: number, patch: Partial<Omit<Task, "id">>): Promise<Task | null> {
+    await db.tasks.update(id, patch);
+    return db.tasks.get(id) ?? null;
   },
 
-  addComment(taskId: number, author: string, text: string, date: string): Comment | null {
-    const tasks = store.getTasks();
-    const idx = tasks.findIndex((t) => t.id === taskId);
-    if (idx === -1) return null;
-    const comment: Comment = { id: nextId(KEYS.commentSeq), author, text, date };
-    tasks[idx].comments.push(comment);
-    set(KEYS.tasks, tasks);
-    return comment;
+  async deleteTask(id: number): Promise<void> {
+    await db.tasks.delete(id);
+    await db.comments.where("taskId").equals(id).delete();
   },
 
-  createEmployee(data: Omit<Employee, "id">): Employee {
-    const employees = store.getEmployees();
-    const emp: Employee = { ...data, id: nextId(KEYS.empSeq) };
-    employees.push(emp);
-    set(KEYS.employees, employees);
-    return emp;
+  async addComment(taskId: number, author: string, text: string, date: string): Promise<Comment> {
+    const comment: Comment = { taskId, author, text, date };
+    const id = await db.comments.add(comment);
+    return { ...comment, id };
   },
 
-  deleteEmployee(id: number) {
-    const employees = store.getEmployees().filter((e) => e.id !== id);
-    set(KEYS.employees, employees);
+  async createEmployee(data: Omit<Employee, "id">): Promise<Employee> {
+    const id = await db.employees.add(data);
+    return { ...data, id };
+  },
+
+  async deleteEmployee(id: number): Promise<void> {
+    await db.employees.delete(id);
   },
 };

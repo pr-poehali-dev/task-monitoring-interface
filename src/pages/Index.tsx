@@ -52,6 +52,7 @@ export default function Index() {
   const [loading, setLoading] = useState(true);
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [taskComments, setTaskComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [filterStatus, setFilterStatus] = useState<Status | "all">("all");
 
@@ -67,10 +68,11 @@ export default function Index() {
   const [deleteEmpModal, setDeleteEmpModal] = useState<Employee | null>(null);
   const [empForm, setEmpForm] = useState({ name: "", position: "", department: "", email: "" });
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    setTasks(store.getTasks());
-    setEmployees(store.getEmployees());
+    const [t, e] = await Promise.all([store.getTasks(), store.getEmployees()]);
+    setTasks(t);
+    setEmployees(e);
     setLoading(false);
   };
 
@@ -119,11 +121,11 @@ export default function Index() {
     setTaskModal({ open: true, mode: "edit", editId: task.id });
   };
 
-  const saveTask = () => {
+  const saveTask = async () => {
     if (!taskForm.title || taskForm.responsible.length === 0 || !taskForm.deadline) return;
     const isReport = section === "reports" || (taskModal.mode === "edit" && tasks.find((t) => t.id === taskModal.editId)?.section === "report");
     if (taskModal.mode === "edit" && taskModal.editId !== undefined) {
-      store.updateTask(taskModal.editId, {
+      await store.updateTask(taskModal.editId, {
         title: taskForm.title, description: taskForm.description,
         responsible: taskForm.responsible, deadline: taskForm.deadline,
         priority: taskForm.priority, assignedBy: taskForm.assignedBy,
@@ -133,7 +135,7 @@ export default function Index() {
       const number = isReport
         ? `ОТ-2026-${String(reportTasks.length + 1).padStart(3, "0")}`
         : `УК-2026-${String(orderTasks.length + 1).padStart(3, "0")}`;
-      store.createTask({
+      await store.createTask({
         number, title: taskForm.title, description: taskForm.description,
         responsible: taskForm.responsible, assignedBy: taskForm.assignedBy,
         deadline: taskForm.deadline, priority: taskForm.priority,
@@ -143,13 +145,13 @@ export default function Index() {
     }
     setTaskModal({ open: false, mode: "create" });
     if (taskModal.mode === "edit" && taskModal.editId) setSelectedTask(null);
-    loadData();
+    await loadData();
   };
 
-  const deleteTask = (taskId: number) => {
-    store.deleteTask(taskId);
+  const deleteTask = async (taskId: number) => {
+    await store.deleteTask(taskId);
     if (selectedTask?.id === taskId) setSelectedTask(null);
-    loadData();
+    await loadData();
   };
 
   const makeShortName = (fullName: string) => {
@@ -158,36 +160,34 @@ export default function Index() {
     return `${parts[0]} ${parts[1][0]}.${parts[2] ? parts[2][0] + "." : ""}`;
   };
 
-  const addEmployee = () => {
+  const addEmployee = async () => {
     if (!empForm.name || !empForm.position || !empForm.department) return;
     const shortName = makeShortName(empForm.name);
-    store.createEmployee({ name: empForm.name.trim(), shortName, position: empForm.position.trim(), department: empForm.department.trim(), email: empForm.email.trim() });
+    await store.createEmployee({ name: empForm.name.trim(), shortName, position: empForm.position.trim(), department: empForm.department.trim(), email: empForm.email.trim() });
     setEmpForm({ name: "", position: "", department: "", email: "" });
     setEmpModal(false);
-    loadData();
+    await loadData();
   };
 
-  const confirmDeleteEmployee = () => {
+  const confirmDeleteEmployee = async () => {
     if (!deleteEmpModal) return;
-    store.deleteEmployee(deleteEmpModal.id);
+    await store.deleteEmployee(deleteEmpModal.id);
     if (selectedEmployee?.id === deleteEmpModal.id) setSelectedEmployee(null);
     setDeleteEmpModal(null);
-    loadData();
+    await loadData();
   };
 
-  const addComment = () => {
+  const addComment = async () => {
     if (!newComment.trim() || !selectedTask) return;
     const date = new Date().toLocaleDateString("ru-RU");
-    const comment = store.addComment(selectedTask.id, "Вы", newComment.trim(), date);
-    if (!comment) return;
-    const updated = tasks.map((t) => t.id === selectedTask.id ? { ...t, comments: [...t.comments, comment] } : t);
-    setTasks(updated);
-    setSelectedTask({ ...selectedTask, comments: [...selectedTask.comments, comment] });
+    await store.addComment(selectedTask.id!, "Вы", newComment.trim(), date);
+    const comments = await store.getComments(selectedTask.id!);
+    setTaskComments(comments);
     setNewComment("");
   };
 
-  const changeStatus = (taskId: number, status: Status) => {
-    store.updateTask(taskId, { status });
+  const changeStatus = async (taskId: number, status: Status) => {
+    await store.updateTask(taskId, { status });
     const updated = tasks.map((t) => (t.id === taskId ? { ...t, status } : t));
     setTasks(updated);
     if (selectedTask?.id === taskId) setSelectedTask({ ...selectedTask, status });
@@ -205,9 +205,9 @@ export default function Index() {
     );
   };
 
-  const confirmReassign = () => {
+  const confirmReassign = async () => {
     if (reassignSelected.length === 0 || !reassignModal.taskId) return;
-    store.updateTask(reassignModal.taskId, { responsible: reassignSelected });
+    await store.updateTask(reassignModal.taskId, { responsible: reassignSelected });
     const updated = tasks.map((t) => t.id === reassignModal.taskId ? { ...t, responsible: reassignSelected } : t);
     setTasks(updated);
     if (selectedTask?.id === reassignModal.taskId) setSelectedTask({ ...selectedTask, responsible: reassignSelected });
@@ -324,7 +324,7 @@ export default function Index() {
                 {filteredOrders.length === 0 && <EmptyState />}
                 {filteredOrders.map((task) => (
                   <TaskCard key={task.id} task={task}
-                    onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }}
+                    onClick={() => { setSelectedTask(task); setSelectedEmployee(null); store.getComments(task.id!).then(setTaskComments); }}
                     isSelected={selectedTask?.id === task.id}
                     onEdit={() => openEdit(task)}
                     onDelete={() => deleteTask(task.id)}
@@ -338,7 +338,7 @@ export default function Index() {
                 {filteredReports.length === 0 && <EmptyState />}
                 {filteredReports.map((task) => (
                   <TaskCard key={task.id} task={task}
-                    onClick={() => { setSelectedTask(task); setSelectedEmployee(null); }}
+                    onClick={() => { setSelectedTask(task); setSelectedEmployee(null); store.getComments(task.id!).then(setTaskComments); }}
                     isSelected={selectedTask?.id === task.id}
                     onEdit={() => openEdit(task)}
                     onDelete={() => deleteTask(task.id)}
@@ -491,7 +491,7 @@ export default function Index() {
                             <span className={`status-badge ${statusClass[linkedOrder.status]} mt-1 inline-flex`}>{statusLabel[linkedOrder.status]}</span>
                           </div>
                           <button
-                            onClick={() => setSelectedTask(linkedOrder)}
+                            onClick={() => { setSelectedTask(linkedOrder); store.getComments(linkedOrder.id!).then(setTaskComments); }}
                             className="text-xs text-[hsl(221,45%,40%)] hover:text-[hsl(221,45%,20%)] flex items-center gap-1 flex-shrink-0 transition-colors"
                           >
                             Открыть <Icon name="ArrowRight" size={11} />
@@ -530,7 +530,7 @@ export default function Index() {
                               </div>
                               <span className={`status-badge ${statusClass[r.status]} flex-shrink-0`}>{statusLabel[r.status]}</span>
                               <button
-                                onClick={() => setSelectedTask(r)}
+                                onClick={() => { setSelectedTask(r); store.getComments(r.id!).then(setTaskComments); }}
                                 className="text-xs text-[hsl(221,45%,40%)] hover:text-[hsl(221,45%,20%)] flex-shrink-0 transition-colors"
                               >
                                 <Icon name="ArrowRight" size={13} />
@@ -548,10 +548,10 @@ export default function Index() {
                 <div>
                   <div className="text-xs font-medium text-[hsl(220,15%,50%)] uppercase tracking-wider mb-3 flex items-center gap-2">
                     <Icon name="MessageSquare" size={12} />
-                    Комментарии ({selectedTask.comments.length})
+                    Комментарии ({taskComments.length})
                   </div>
                   <div className="space-y-3">
-                    {selectedTask.comments.map((c) => (
+                    {taskComments.map((c) => (
                       <div key={c.id} className="bg-[hsl(220,25%,97%)] rounded-sm p-3">
                         <div className="flex items-center justify-between mb-1.5">
                           <span className="text-xs font-semibold text-[hsl(220,30%,20%)]">{c.author}</span>
@@ -560,7 +560,7 @@ export default function Index() {
                         <p className="text-sm text-[hsl(220,20%,30%)] leading-relaxed">{c.text}</p>
                       </div>
                     ))}
-                    {selectedTask.comments.length === 0 && <p className="text-xs text-[hsl(220,15%,60%)] italic">Комментариев пока нет</p>}
+                    {taskComments.length === 0 && <p className="text-xs text-[hsl(220,15%,60%)] italic">Комментариев пока нет</p>}
                   </div>
                   <div className="mt-3 flex gap-2">
                     <input type="text" value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()}
@@ -937,11 +937,7 @@ function TaskCard({ task, onClick, isSelected, onEdit, onDelete, linkedOrder }: 
               <Icon name="Calendar" size={11} />
               {new Date(task.deadline).toLocaleDateString("ru-RU", { day: "numeric", month: "short" })}
             </span>
-            {task.comments.length > 0 && (
-              <span className="text-xs flex items-center gap-1 text-[hsl(220,15%,55%)]">
-                <Icon name="MessageSquare" size={11} />{task.comments.length}
-              </span>
-            )}
+
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
